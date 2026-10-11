@@ -18,13 +18,56 @@ export const DEFAULT_KEY_GROUPS = ['major']
 // Keys conventionally spelled with flats.
 const FLAT_KEYS = new Set([1, 3, 5, 8, 10])
 
-// I-V-vi-IV as [semitones above the key root, is minor].
-const PROGRESSION: [number, boolean][] = [
-  [0, false],
-  [7, false],
-  [9, true],
-  [5, false],
+/** One chord of a progression: where it sits above the key's root and whether it is minor. */
+export interface Step {
+  numeral: string
+  /** Semitones above the key's root. */
+  offset: number
+  minor: boolean
+}
+
+export const MAX_CHORDS = 8
+
+const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11]
+const NUMERAL_PATTERN = /^([b#♭♯]?)(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)$/
+
+/**
+ * Parses relative numerals such as "ii V I" or "I-bVII-IV" into steps. Upper case is a major
+ * chord and lower case a minor one, on the degree of the major scale, optionally lowered (b)
+ * or raised (#). Returns undefined if the text is empty, too long or has an unknown numeral.
+ */
+export function parseNumerals(text: string): Step[] | undefined {
+  const tokens = text.split(/[\s,\-–]+/).filter(Boolean)
+  if (tokens.length === 0 || tokens.length > MAX_CHORDS) return undefined
+  const steps: Step[] = []
+  for (const token of tokens) {
+    const match = NUMERAL_PATTERN.exec(token)
+    if (!match) return undefined
+    const [, accidental, numeral] = match
+    const degree = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii'].indexOf(numeral!.toLowerCase())
+    const shift = accidental === '' ? 0 : 'b♭'.includes(accidental!) ? -1 : 1
+    steps.push({
+      numeral: token.replace('♭', 'b').replace('♯', '#'),
+      offset: (MAJOR_SCALE[degree]! + shift + 12) % 12,
+      minor: numeral === numeral!.toLowerCase(),
+    })
+  }
+  return steps
+}
+
+/** Common progressions, in relative numerals. The first is the default. */
+export const PRESETS = [
+  'I-V-vi-IV',
+  'I-vi-IV-V',
+  'vi-IV-I-V',
+  'IV-I-V-vi',
+  'I-IV-V-I',
+  'ii-V-I',
+  'vi-V-IV-iii',
+  'i-bVI-bIII-bVII',
 ]
+
+export const DEFAULT_STEPS = parseNumerals(PRESETS[0]!)!
 
 export interface Chord {
   numeral: string
@@ -60,12 +103,10 @@ export interface Progression {
   chords: Chord[]
 }
 
-const NUMERALS = ['I', 'V', 'vi', 'IV']
-
-export function buildProgression(root: number): Progression {
+export function buildProgression(root: number, steps: Step[]): Progression {
   const names = FLAT_KEYS.has(root) ? FLAT_NAMES : SHARP_NAMES
-  const chords = PROGRESSION.map(([offset, minor], i) => ({
-    numeral: NUMERALS[i]!,
+  const chords = steps.map(({ numeral, offset, minor }) => ({
+    numeral,
     name: names[(root + offset) % 12]! + (minor ? 'm' : ''),
     notes: (minor ? MINOR_TRIAD : MAJOR_TRIAD).map((interval) => root + offset + interval),
   }))
@@ -79,16 +120,16 @@ export interface ChordOption {
 }
 
 /** Every chord the chord at `index` can be, each paired with the progression key that produces it. */
-export function chordOptions(index: number): ChordOption[] {
+export function chordOptions(steps: Step[], index: number): ChordOption[] {
   return Array.from({ length: 12 }, (_, root) => ({
     root,
-    name: buildProgression(root).chords[index]!.name,
+    name: buildProgression(root, steps).chords[index]!.name,
   })).sort((a, b) => a.name.localeCompare(b.name) || a.root - b.root)
 }
 
 /** Picks a random key from the given groups for the progression, never the one in `previous`. */
-export function rerollProgression(previous: number, groupIds: string[]): Progression {
+export function rerollProgression(previous: number, groupIds: string[], steps: Step[]): Progression {
   const roots = KEY_GROUPS.filter((g) => groupIds.includes(g.id)).flatMap((g) => g.roots)
   const candidates = roots.filter((r) => r !== previous)
-  return buildProgression(candidates[Math.floor(Math.random() * candidates.length)]!)
+  return buildProgression(candidates[Math.floor(Math.random() * candidates.length)]!, steps)
 }

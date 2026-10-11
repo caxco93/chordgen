@@ -4,29 +4,39 @@ import ArrowStepper from './components/ArrowStepper.vue'
 import ChordSelect from './components/ChordSelect.vue'
 import MultiSelect from './components/MultiSelect.vue'
 import PianoKeyboard from './components/PianoKeyboard.vue'
+import ProgressionControl from './components/ProgressionControl.vue'
 import { usePlayback } from './usePlayback'
 import {
   DEFAULT_KEY_GROUPS,
+  DEFAULT_STEPS,
   INVERSION_LABELS,
   KEY_GROUPS,
   buildProgression,
   chordOptions,
   invert,
   keyboardStart,
+  parseNumerals,
   type Progression,
+  type Step,
   rerollProgression,
 } from './chords'
 
+/** A list with `value` for each chord of the current progression. */
+function perChord(value: number): number[] {
+  return Array(steps.value.length).fill(value)
+}
+
 const keyGroups = ref([...DEFAULT_KEY_GROUPS])
-const progression = ref(buildProgression(0))
+const steps = ref<Step[]>(DEFAULT_STEPS)
+const progression = ref(buildProgression(0, steps.value))
+const numerals = computed(() => steps.value.map((step) => step.numeral).join('-'))
 
 const DEFAULT_OCTAVE = 4
-const CHORD_COUNT = 4
 // Each chord's diagram, inversion and octave are set independently.
-const inversions = ref<number[]>(Array(CHORD_COUNT).fill(0))
-const octaves = ref<number[]>(Array(CHORD_COUNT).fill(DEFAULT_OCTAVE))
+const inversions = ref<number[]>(perChord(0))
+const octaves = ref<number[]>(perChord(DEFAULT_OCTAVE))
 // The key each chord was picked from. They all match while the progression is locked.
-const chordRoots = ref<number[]>(Array(CHORD_COUNT).fill(progression.value.root))
+const chordRoots = ref<number[]>(perChord(progression.value.root))
 // While locked, picking a chord moves the whole progression to that chord's key.
 const locked = ref(true)
 
@@ -123,19 +133,26 @@ function togglePlayback() {
 function setProgression(next: Progression) {
   stop()
   clearPreview()
-  inversions.value.fill(0)
-  octaves.value.fill(DEFAULT_OCTAVE)
-  chordRoots.value.fill(next.root)
   progression.value = next
+  inversions.value = perChord(0)
+  octaves.value = perChord(DEFAULT_OCTAVE)
+  chordRoots.value = perChord(next.root)
 }
 
 function reroll() {
-  setProgression(rerollProgression(progression.value.root, keyGroups.value))
+  setProgression(rerollProgression(progression.value.root, keyGroups.value, steps.value))
+}
+
+function selectProgression(text: string) {
+  const next = parseNumerals(text)
+  if (!next) return
+  steps.value = next
+  setProgression(buildProgression(progression.value.root, next))
 }
 
 function selectChord(index: number, root: number) {
   if (locked.value) {
-    if (chordRoots.value.some((r) => r !== root)) setProgression(buildProgression(root))
+    if (chordRoots.value.some((r) => r !== root)) setProgression(buildProgression(root, steps.value))
     return
   }
   if (root === chordRoots.value[index]) return
@@ -147,7 +164,7 @@ function selectChord(index: number, root: number) {
   progression.value = {
     ...progression.value,
     chords: progression.value.chords.map((chord, i) =>
-      i === index ? buildProgression(root).chords[index]! : chord,
+      i === index ? buildProgression(root, steps.value).chords[index]! : chord,
     ),
   }
 }
@@ -156,15 +173,7 @@ function selectChord(index: number, root: number) {
 <template>
   <main>
     <header class="toolbar">
-      <button
-        type="button"
-        class="lock"
-        :aria-pressed="locked"
-        :title="locked ? 'Choosing a chord changes the others to match' : 'Chords can be chosen independently'"
-        @click="locked = !locked"
-      >
-        {{ locked ? '🔒' : '🔓' }} I-V-vi-IV
-      </button>
+      <ProgressionControl v-model:locked="locked" :current="numerals" @select="selectProgression" />
       <ArrowStepper
         what="octave"
         label="Octave"
@@ -176,7 +185,7 @@ function selectChord(index: number, root: number) {
     <ul class="chords">
       <li
         v-for="(chord, i) in progression.chords"
-        :key="chord.numeral"
+        :key="i"
         class="chord"
         :class="{ playing: currentIndex === i }"
         @mouseenter="showPreview(i)"
@@ -184,7 +193,7 @@ function selectChord(index: number, root: number) {
         <div class="chord-header">
           <ChordSelect
             :name="chord.name"
-            :options="chordOptions(i)"
+            :options="chordOptions(steps, i)"
             :selected="chordRoots[i]!"
             @select="selectChord(i, $event)"
           />
@@ -218,7 +227,7 @@ function selectChord(index: number, root: number) {
       </li>
     </ul>
     <footer>
-      <button type="button" @click="reroll">Reroll I-V-vi-IV</button>
+      <button type="button" @click="reroll">Reroll</button>
       <MultiSelect v-model="keyGroups" label="Keys for I" :options="KEY_GROUPS" />
       <button type="button" @click="togglePlayback">{{ isPlaying ? 'Stop' : 'Play' }}</button>
       <label>
@@ -357,10 +366,6 @@ main {
   flex-wrap: wrap;
   gap: 0.75rem 1.5rem;
   font-size: 0.9rem;
-}
-
-.lock[aria-pressed='true'] {
-  border-color: var(--accent);
 }
 
 footer {
