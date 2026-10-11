@@ -29,7 +29,9 @@ function perChord(value: number): number[] {
 const keyGroups = ref([...DEFAULT_KEY_GROUPS])
 const steps = ref<Step[]>(DEFAULT_STEPS)
 const progression = ref(buildProgression(0, steps.value))
-const numerals = computed(() => steps.value.map((step) => step.numeral).join('-'))
+// Chords picked from different keys no longer form the progression.
+const isMixed = computed(() => chordRoots.value.some((root) => root !== chordRoots.value[0]))
+const numerals = computed((() => steps.value.map((step) => step.numeral).join('-'))
 
 const DEFAULT_OCTAVE = 4
 // Each chord's diagram, inversion and octave are set independently.
@@ -174,7 +176,7 @@ function selectChord(index: number, root: number) {
 <template>
   <main>
     <header class="toolbar">
-      <ProgressionControl v-model:locked="locked" :current="numerals" @select="selectProgression" />
+      <ProgressionControl v-model:locked="locked" :current="isMixed ? null : numerals" @select="selectProgression" />
       <ArrowStepper
         what="octave"
         label="Octave"
@@ -198,7 +200,7 @@ function selectChord(index: number, root: number) {
             :selected="chordRoots[i]!"
             @select="selectChord(i, $event)"
           />
-          <span class="numeral">{{ chord.numeral }}</span>
+          <span class="numeral" :class="{ hidden: isMixed }">{{ chord.numeral }}</span>
         </div>
         <div class="detail">
           <PianoKeyboard
@@ -357,6 +359,11 @@ main {
 .numeral {
   font-size: 1.5rem;
   color: var(--muted);
+}
+
+/* Keeps its space so the layout doesn't shift. */
+.numeral.hidden {
+  visibility: hidden;
 }
 
 .toolbar {

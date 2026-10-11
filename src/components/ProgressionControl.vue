@@ -4,8 +4,8 @@ import { MAX_CHORDS, PRESETS, parseNumerals } from '../chords'
 import { useDismiss } from './useDismiss'
 
 defineProps<{
-  /** The current progression in relative numerals, e.g. "I-V-vi-IV". */
-  current: string
+  /** The current progression in relative numerals, e.g. "I-V-vi-IV", or null if the chords were picked individually. */
+  current: string | null
 }>()
 
 const emit = defineEmits<{ select: [numerals: string] }>()
@@ -52,7 +52,7 @@ function submitCustom() {
         </svg>
       </button>
       <button type="button" class="current" aria-haspopup="listbox" :aria-expanded="open" @click="open = !open">
-        {{ current }} ▾
+        {{ current ?? 'Mixed' }} ▾
       </button>
     </div>
     <div v-if="open" class="popup">
