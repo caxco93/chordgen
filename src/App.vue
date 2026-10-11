@@ -229,11 +229,18 @@ main {
 
 /*
  * Grid columns (previous arrow / label / next arrow) are sized across both rows at once,
- * so the Inversion and Octave arrows land in the same column.
+ * so the Inversion and Octave arrows land in the same column. The label column's min-width
+ * is set in `ch` to fit the longest label that can ever appear ("Root position" / "1st
+ * inversion" / "2nd inversion", all 13 characters; "Octave N" is shorter) rather than sizing
+ * to 1fr or to the current chord's own labels. A 1fr track pushes the next-arrow to the far
+ * edge of the card instead of right after the label, and sizing per-chord content would make
+ * the arrows jump around as the chord progression rerolls. The fixed `ch` width keeps the
+ * arrows sitting right next to the label and stable across every chord.
  */
 .steppers {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(13ch, auto) auto;
+  justify-content: center;
   align-items: center;
   column-gap: 0.5rem;
   row-gap: 0.35rem;
