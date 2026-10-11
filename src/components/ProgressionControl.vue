@@ -42,7 +42,14 @@ function submitCustom() {
         :title="locked ? 'Choosing a chord changes the others to match' : 'Chords can be chosen independently'"
         @click="locked = !locked"
       >
-        {{ locked ? '🔒' : '🔓' }}
+        <!--
+          A padlock. Unlocking swings the shackle open 180 degrees about its left leg (a flip
+          about x=12), so it ends up beside the body rather than over it.
+        -->
+        <svg viewBox="0 0 28 24" width="18" height="16" aria-hidden="true">
+          <path class="shackle" :class="{ open: !locked }" d="M12 11V7a4 4 0 0 1 8 0v4" />
+          <rect class="body" x="8" y="11" width="16" height="11" rx="2" />
+        </svg>
       </button>
       <button type="button" class="current" aria-haspopup="listbox" :aria-expanded="open" @click="open = !open">
         {{ current }} ▾
@@ -90,7 +97,31 @@ function submitCustom() {
   border-right-width: 0;
 }
 
+.lock svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.lock .body {
+  fill: currentColor;
+}
+
+.shackle {
+  transform-box: view-box;
+  transform-origin: 12px 0;
+  transition: transform 0.2s;
+}
+
+.shackle.open {
+  transform: scaleX(-1);
+}
+
 .lock[aria-pressed='true'] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
   border-color: var(--accent);
 }
 
