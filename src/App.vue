@@ -20,6 +20,7 @@ import {
   type Progression,
   rerollProgression,
 } from './chords'
+import { optimizeInversions } from './optimizeInversions'
 
 const keyGroups = ref([...DEFAULT_KEY_GROUPS])
 const progression = ref(buildProgression(0))
@@ -91,6 +92,21 @@ function shiftOctave(index: number, step: number) {
   showPreview(index)
 }
 
+/**
+ * Locks chord `index`'s current voicing and re-voices every other chord around it: as close to
+ * it as possible while keeping the whole progression's span (lowest to highest note) as small as
+ * possible. See `optimizeInversions` for the exact ordering of those two criteria.
+ */
+function optimizeInversionsFrom(index: number) {
+  stop()
+  const allNotes = progression.value.chords.map((chord) => chord.notes)
+  const locked = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
+  const result = optimizeInversions(allNotes, index, locked)
+  inversions.value = result.inversions
+  octaves.value = result.octaves
+  showPreview(index)
+}
+
 function togglePlayback() {
   clearPreview()
   toggle()
@@ -156,6 +172,7 @@ function selectKey(root: number) {
               @step="shiftOctave(i, $event)"
             />
           </div>
+          <button type="button" class="optimize" @click="optimizeInversionsFrom(i)">Optimize Inversions</button>
         </div>
       </li>
     </ul>
@@ -274,6 +291,12 @@ main {
 
 .full-piano {
   flex: none;
+}
+
+/* Same look as the global button, just condensed to fit comfortably below the steppers. */
+.optimize {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.8rem;
 }
 
 .bpm {
