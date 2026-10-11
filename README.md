@@ -13,7 +13,7 @@ A chord progression generator with piano diagrams, inversions, octaves and playb
 - **Inversions and octaves**: step each chord through its inversions and octaves, or shift every octave at once.
 - **Optimize inversions**: pick inversions that keep the voice leading smooth between neighbouring chords.
 - **Full piano preview**: the chord you hover or adjust lights up across all 88 keys.
-- **Playback**: play the progression with sound, loop it and set the tempo (BPM).
+- **Playback**: play the progression with sound, loop it, set the tempo (BPM) and pick an instrument (piano or block chord).
 
 ## Getting started
 
