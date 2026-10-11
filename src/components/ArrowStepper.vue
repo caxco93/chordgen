@@ -76,17 +76,29 @@ defineEmits<{ step: [direction: -1 | 1] }>()
   text-align: center;
 }
 
-/* Octave: de-emphasized relative to Inversion — bare glyphs, no border/fill, dimmer overall. */
+/*
+ * Octave: de-emphasized relative to Inversion — bare glyphs, no border/fill, dimmer overall.
+ * The arrow and the label must look equally dim, so both share the same base color
+ * (--muted, same as the label's normal color) and the same opacity variable — not just
+ * the same opacity *number* applied to two different colors, which would render differently.
+ * No hover style change here: the subtle arrows stay static (cursor + focus-visible only).
+ */
+.stepper.subtle {
+  --subtle-dim: 0.6;
+}
+
 .stepper.subtle .arrow {
   background: none;
   border-color: transparent;
   padding: 0.5rem 0.7rem;
-  opacity: 0.6;
+  color: var(--muted);
+  opacity: var(--subtle-dim);
 }
 
+/* Override the base .arrow hover rule (border-color: var(--muted)), which would otherwise
+   still draw a border on hover here since it isn't scoped to :not(.subtle). */
 .stepper.subtle .arrow:hover:not(:disabled) {
-  opacity: 1;
-  color: var(--text);
+  border-color: transparent;
 }
 
 .stepper.subtle .arrow:disabled {
@@ -94,6 +106,7 @@ defineEmits<{ step: [direction: -1 | 1] }>()
 }
 
 .stepper.subtle .label {
-  opacity: 0.6;
+  color: var(--muted);
+  opacity: var(--subtle-dim);
 }
 </style>
