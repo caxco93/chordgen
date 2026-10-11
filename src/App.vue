@@ -162,6 +162,8 @@ function optimizeInversionsFrom(index: number) {
     chord: progression.value.chords[index]!.name,
     octave: anchor.octave,
     inversion: anchor.inversion,
+    progression: progression.value.chords.map((chord) => chord.name).join('-'),
+    voicings: octaves.value.map((octave, i) => `${octave}/${inversions.value[i]}`).join('-'),
   })
   const result = optimizeInversions(allNotes, index, anchor)
   inversions.value = result.inversions
