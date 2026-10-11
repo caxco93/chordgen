@@ -9,7 +9,10 @@ defineProps<{
   current: string | null
 }>()
 
-const emit = defineEmits<{ select: [numerals: string] }>()
+const emit = defineEmits<{
+  /** `custom` is true when the numerals were typed in rather than picked from the presets. */
+  select: [numerals: string, custom: boolean]
+}>()
 
 /** Whether choosing a chord changes the whole progression to match. */
 const locked = defineModel<boolean>('locked', { required: true })
@@ -21,9 +24,9 @@ useDismiss(root, () => (open.value = false))
 const custom = ref('')
 const customInvalid = computed(() => custom.value.trim() !== '' && !parseNumerals(custom.value))
 
-function choose(numerals: string) {
+function choose(numerals: string, isCustom: boolean) {
   open.value = false
-  emit('select', numerals)
+  emit('select', numerals, isCustom)
 }
 
 function toggleLock() {
@@ -33,7 +36,7 @@ function toggleLock() {
 
 function submitCustom() {
   if (custom.value.trim() === '' || customInvalid.value) return
-  choose(custom.value)
+  choose(custom.value, true)
 }
 </script>
 
@@ -64,7 +67,7 @@ function submitCustom() {
     <div v-if="open" class="popup">
       <ul class="presets" role="listbox">
         <li v-for="numerals in PRESETS" :key="numerals" role="option" :aria-selected="numerals === current">
-          <button type="button" :class="{ selected: numerals === current }" @click="choose(numerals)">
+          <button type="button" :class="{ selected: numerals === current }" @click="choose(numerals, false)">
             {{ numerals }}
           </button>
         </li>
