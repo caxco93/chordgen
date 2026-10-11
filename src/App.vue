@@ -12,8 +12,7 @@ const MIN_OCTAVE = 1
 const MAX_OCTAVE = 5
 const DEFAULT_OCTAVE = 4
 const CHORD_COUNT = 4
-// Each chord's diagram, inversion and octave are set independently. A closed chord is always at its defaults.
-const expanded = ref<boolean[]>(Array(CHORD_COUNT).fill(false))
+// Each chord's diagram, inversion and octave are set independently.
 const inversions = ref<number[]>(Array(CHORD_COUNT).fill(0))
 const octaves = ref<number[]>(Array(CHORD_COUNT).fill(DEFAULT_OCTAVE))
 
@@ -55,13 +54,6 @@ function clearPreview() {
 
 onUnmounted(clearPreview)
 
-function toggleExpanded(index: number) {
-  expanded.value[index] = !expanded.value[index]
-  inversions.value[index] = 0
-  octaves.value[index] = DEFAULT_OCTAVE
-  if (expanded.value[index]) showPreview(index)
-}
-
 /** Steps the voicing up or down, rolling over into the neighbouring octave past either end. */
 function shiftInversion(index: number, step: number) {
   const next = inversions.value[index]! + step
@@ -91,7 +83,6 @@ function togglePlayback() {
 function reroll() {
   stop()
   clearPreview()
-  expanded.value.fill(false)
   inversions.value.fill(0)
   octaves.value.fill(DEFAULT_OCTAVE)
   progression.value = rerollProgression(progression.value.root, majorScaleOnly.value)
@@ -108,17 +99,11 @@ function reroll() {
         :class="{ playing: currentIndex === i }"
         @mouseenter="showPreview(i)"
       >
-        <button
-          type="button"
-          class="chord-button"
-          :class="{ selected: expanded[i] }"
-          :aria-expanded="expanded[i]"
-          @click="toggleExpanded(i)"
-        >
+        <div class="chord-header">
           <span class="name">{{ chord.name }}</span>
           <span class="numeral">{{ chord.numeral }}</span>
-        </button>
-        <div v-if="expanded[i]" class="detail">
+        </div>
+        <div class="detail">
           <PianoKeyboard
             class="detail-piano"
             :notes="voicings[i]!"
@@ -214,22 +199,14 @@ main {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-.chord-button {
-  flex: 1;
+.chord-header {
+  flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  padding: 0;
-  border: none;
-  border-radius: 0.5rem;
-  background: none;
-}
-
-.chord-button.selected {
-  flex: none;
 }
 
 .detail {
