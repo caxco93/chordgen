@@ -71,7 +71,11 @@ const previewId = ref(0)
 let previewTimer: ReturnType<typeof setTimeout> | undefined
 
 function showPreview(index: number) {
-  previewNotes.value = voicings.value[index]!
+  showNotes(voicings.value[index]!)
+}
+
+function showNotes(notes: number[]) {
+  previewNotes.value = notes
   previewId.value++
   clearTimeout(previewTimer)
   previewTimer = setTimeout(() => (previewNotes.value = []), PREVIEW_MS)
@@ -104,6 +108,7 @@ function shiftOctave(index: number, step: number) {
 function shiftAllOctaves(step: number) {
   if (!canShiftAllOctaves(step)) return
   octaves.value = octaves.value.map((octave) => octave + step)
+  showNotes(voicings.value.flat())
 }
 
 function canShiftAllOctaves(step: number): boolean {
