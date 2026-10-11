@@ -1,9 +1,19 @@
 const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
 
-// Pitch classes of the C major scale, i.e. the natural notes.
-const MAJOR_SCALE_ROOTS = [0, 2, 4, 5, 7, 9, 11]
-const ALL_ROOTS = Array.from({ length: 12 }, (_, i) => i)
+export interface KeyGroup {
+  id: string
+  label: string
+  /** Pitch classes of the keys in this group. */
+  roots: number[]
+}
+
+export const KEY_GROUPS: KeyGroup[] = [
+  { id: 'major', label: 'Major', roots: [0, 2, 4, 5, 7, 9, 11] },
+  { id: 'accidentals', label: 'Sharps / flats', roots: [1, 3, 6, 8, 10] },
+]
+
+export const DEFAULT_KEY_GROUPS = ['major']
 
 // Keys conventionally spelled with flats.
 const FLAT_KEYS = new Set([1, 3, 5, 8, 10])
@@ -58,9 +68,23 @@ export function buildProgression(root: number): Progression {
   return { root, chords }
 }
 
-/** Picks a random key for the progression, never the one in `previous`. */
-export function rerollProgression(previous: number, majorScaleOnly: boolean): Progression {
-  const roots = majorScaleOnly ? MAJOR_SCALE_ROOTS : ALL_ROOTS
+export interface ChordOption {
+  /** The progression key that makes the chord this one. */
+  root: number
+  name: string
+}
+
+/** Every chord the chord at `index` can be, each paired with the progression key that produces it. */
+export function chordOptions(index: number): ChordOption[] {
+  return Array.from({ length: 12 }, (_, root) => ({
+    root,
+    name: buildProgression(root).chords[index]!.name,
+  })).sort((a, b) => a.name.localeCompare(b.name) || a.root - b.root)
+}
+
+/** Picks a random key from the given groups for the progression, never the one in `previous`. */
+export function rerollProgression(previous: number, groupIds: string[]): Progression {
+  const roots = KEY_GROUPS.filter((g) => groupIds.includes(g.id)).flatMap((g) => g.roots)
   const candidates = roots.filter((r) => r !== previous)
   return buildProgression(candidates[Math.floor(Math.random() * candidates.length)]!)
 }

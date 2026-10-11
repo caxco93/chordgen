@@ -1,11 +1,23 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue'
 import ArrowStepper from './components/ArrowStepper.vue'
+import ChordSelect from './components/ChordSelect.vue'
+import MultiSelect from './components/MultiSelect.vue'
 import PianoKeyboard from './components/PianoKeyboard.vue'
 import { usePlayback } from './usePlayback'
-import { INVERSION_LABELS, buildProgression, invert, keyboardStart, rerollProgression } from './chords'
+import {
+  DEFAULT_KEY_GROUPS,
+  INVERSION_LABELS,
+  KEY_GROUPS,
+  buildProgression,
+  chordOptions,
+  invert,
+  keyboardStart,
+  type Progression,
+  rerollProgression,
+} from './chords'
 
-const majorScaleOnly = ref(true)
+const keyGroups = ref([...DEFAULT_KEY_GROUPS])
 const progression = ref(buildProgression(0))
 
 const DEFAULT_OCTAVE = 4
@@ -89,12 +101,20 @@ function togglePlayback() {
   toggle()
 }
 
-function reroll() {
+function setProgression(next: Progression) {
   stop()
   clearPreview()
   inversions.value.fill(0)
   octaves.value.fill(DEFAULT_OCTAVE)
-  progression.value = rerollProgression(progression.value.root, majorScaleOnly.value)
+  progression.value = next
+}
+
+function reroll() {
+  setProgression(rerollProgression(progression.value.root, keyGroups.value))
+}
+
+function selectKey(root: number) {
+  if (root !== progression.value.root) setProgression(buildProgression(root))
 }
 </script>
 
@@ -109,7 +129,12 @@ function reroll() {
         @mouseenter="showPreview(i)"
       >
         <div class="chord-header">
-          <span class="name">{{ chord.name }}</span>
+          <ChordSelect
+            :name="chord.name"
+            :options="chordOptions(i)"
+            :selected="progression.root"
+            @select="selectKey"
+          />
           <span class="numeral">{{ chord.numeral }}</span>
         </div>
         <div class="detail">
@@ -140,11 +165,8 @@ function reroll() {
       </li>
     </ul>
     <footer>
-      <button type="button" @click="reroll">Reroll</button>
-      <label>
-        <input v-model="majorScaleOnly" type="checkbox" />
-        Major scale only for I
-      </label>
+      <button type="button" @click="reroll">Reroll I-V-vi-IV</button>
+      <MultiSelect v-model="keyGroups" label="Keys for I" :options="KEY_GROUPS" />
       <button type="button" @click="togglePlayback">{{ isPlaying ? 'Stop' : 'Play' }}</button>
       <label>
         <input v-model="loop" type="checkbox" />
@@ -203,7 +225,6 @@ main {
   border-radius: 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  overflow: hidden;
 }
 
 .chord.playing {
@@ -270,12 +291,6 @@ main {
   border-radius: 0.5rem;
 }
 
-.name {
-  font-size: clamp(3rem, 12vw, 8rem);
-  font-weight: 700;
-  line-height: 1;
-}
-
 .numeral {
   font-size: 1.5rem;
   color: var(--muted);
@@ -288,26 +303,5 @@ footer {
   flex-wrap: wrap;
   gap: 0.75rem 1.5rem;
   font-size: 0.9rem;
-}
-
-button {
-  padding: 0.4rem 1rem;
-  font: inherit;
-  color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: var(--muted);
-}
-
-label {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
 }
 </style>
