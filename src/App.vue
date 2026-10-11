@@ -75,7 +75,7 @@ function inversionTarget(index: number, step: number): { inversion: number; octa
 const { bpm, loop, sound, instrument, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM } =
   usePlayback(voicings)
 
-const { pressed } = useMidiInput()
+const { pressed } = useMidiInput(instrument)
 
 // A brief, fading look at a chord on the full piano. Each trigger restarts it.
 const previewNotes = ref<number[]>([])

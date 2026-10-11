@@ -103,21 +103,24 @@ function trackVoice(gain: GainNode, nodes: AudioNode[], lastNode: OscillatorNode
   }
 }
 
+/** A piano note that has started sounding but has no scheduled end yet. */
+interface PianoNote {
+  noteGain: GainNode
+  oscillators: OscillatorNode[]
+  nodes: AudioNode[]
+}
+
 /**
- * Plays a single piano note: a stack of detuned, slightly inharmonic partials plus a
- * hammer-noise transient, shaped by a per-note envelope and a brightness filter that
- * closes over time.
+ * Starts a single piano note: a stack of detuned, slightly inharmonic partials plus a
+ * hammer-noise transient, with a brightness filter that closes over time. The caller
+ * shapes the rest of the envelope and stops the oscillators.
  */
-function playPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, now: number, seconds: number) {
+function startPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, now: number, velocity: number): PianoNote {
   const frequency = midiToFrequency(midi)
-  const attackEnd = now + PIANO_ATTACK_SECONDS
-  const releaseStart = Math.max(attackEnd, now + seconds - STOP_RELEASE_SECONDS)
 
   const noteGain = ctx.createGain()
   noteGain.gain.setValueAtTime(0, now)
-  noteGain.gain.linearRampToValueAtTime(PIANO_NOTE_GAIN, attackEnd) // fast hammer-strike attack
-  noteGain.gain.exponentialRampToValueAtTime(PIANO_NOTE_GAIN * PIANO_SUSTAIN_LEVEL, releaseStart) // decay while the string rings
-  noteGain.gain.linearRampToValueAtTime(0, now + seconds) // release when the note ends
+  noteGain.gain.linearRampToValueAtTime(PIANO_NOTE_GAIN * velocity, now + PIANO_ATTACK_SECONDS) // fast hammer-strike attack
   noteGain.connect(destination)
 
   const filter = ctx.createBiquadFilter()
@@ -128,7 +131,7 @@ function playPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, 
 
   // Keep every node this note creates so it can all be disconnected once the note finishes.
   const nodes: AudioNode[] = [noteGain, filter]
-  let lastOscillator: OscillatorNode | null = null
+  const oscillators: OscillatorNode[] = []
 
   for (let n = 1; n <= PARTIAL_COUNT; n++) {
     const partialFrequency = frequency * n * Math.sqrt(1 + INHARMONICITY * n * n) // slight stretch above the exact harmonic series
@@ -146,9 +149,8 @@ function playPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, 
       oscillator.detune.value = detune
       oscillator.connect(partialGain)
       oscillator.start(now)
-      oscillator.stop(now + seconds)
       nodes.push(oscillator)
-      lastOscillator = oscillator
+      oscillators.push(oscillator)
     }
   }
 
@@ -167,8 +169,19 @@ function playPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, 
   noise.start(now)
   nodes.push(noise, noiseFilter, hammerGain)
 
-  // The oscillators all stop together, last, so their 'ended' event marks the note as finished.
-  trackVoice(noteGain, nodes, lastOscillator!)
+  return { noteGain, oscillators, nodes }
+}
+
+/** Plays a piano note for a fixed duration. */
+function playPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, now: number, seconds: number) {
+  const { noteGain, oscillators, nodes } = startPianoNote(ctx, destination, midi, now, 1)
+  const releaseStart = Math.max(now + PIANO_ATTACK_SECONDS, now + seconds - STOP_RELEASE_SECONDS)
+  noteGain.gain.exponentialRampToValueAtTime(PIANO_NOTE_GAIN * PIANO_SUSTAIN_LEVEL, releaseStart) // decay while the string rings
+  noteGain.gain.linearRampToValueAtTime(0, now + seconds) // release when the note ends
+  for (const oscillator of oscillators) oscillator.stop(now + seconds)
+
+  // The oscillators all stop together, so the last one's 'ended' event marks the note as finished.
+  trackVoice(noteGain, nodes, oscillators[oscillators.length - 1]!)
 }
 
 /** Plays every note of the chord as a plain triangle oscillator under one shared envelope. */
@@ -207,13 +220,30 @@ export function playChord(midiNotes: number[], seconds: number, instrument: Inst
   }
 }
 
-const held = new Map<number, { oscillator: OscillatorNode; output: GainNode }>()
+/** Starts a note that sounds until released, returning the function that releases it. */
+type StartHeld = (ctx: AudioContext, destination: AudioNode, midi: number, velocity: number) => () => void
 
-/** Starts a note that sounds until `noteOff`. Velocity is 0–1 and scales the volume. */
-export function noteOn(midi: number, velocity: number) {
-  noteOff(midi)
-  const { context: ctx, masterGain: destination } = getAudioGraph()
+const startHeldPiano: StartHeld = (ctx, destination, midi, velocity) => {
+  const now = ctx.currentTime
+  const { noteGain, oscillators, nodes } = startPianoNote(ctx, destination, midi, now, velocity)
+  noteGain.gain.setTargetAtTime(
+    PIANO_NOTE_GAIN * velocity * PIANO_SUSTAIN_LEVEL,
+    now + PIANO_ATTACK_SECONDS,
+    PARTIAL_DECAY_SECONDS,
+  )
+  return () => {
+    const end = ctx.currentTime + STOP_RELEASE_SECONDS
+    noteGain.gain.cancelScheduledValues(ctx.currentTime)
+    noteGain.gain.setValueAtTime(noteGain.gain.value, ctx.currentTime)
+    noteGain.gain.linearRampToValueAtTime(0, end)
+    for (const oscillator of oscillators) oscillator.stop(end)
+    oscillators[oscillators.length - 1]!.onended = () => {
+      for (const node of nodes) node.disconnect()
+    }
+  }
+}
 
+const startHeldBlock: StartHeld = (ctx, destination, midi, velocity) => {
   const now = ctx.currentTime
   const output = ctx.createGain()
   output.gain.setValueAtTime(0, now)
@@ -225,30 +255,39 @@ export function noteOn(midi: number, velocity: number) {
   oscillator.frequency.value = midiToFrequency(midi)
   oscillator.connect(output)
   oscillator.start(now)
-  oscillator.onended = () => {
-    oscillator.disconnect()
-    output.disconnect()
+  return () => {
+    const end = ctx.currentTime + BLOCK_RELEASE_SECONDS
+    output.gain.cancelScheduledValues(ctx.currentTime)
+    output.gain.setValueAtTime(output.gain.value, ctx.currentTime)
+    output.gain.linearRampToValueAtTime(0, end)
+    oscillator.stop(end)
+    oscillator.onended = () => {
+      oscillator.disconnect()
+      output.disconnect()
+    }
   }
-  held.set(midi, { oscillator, output })
+}
+
+const heldReleasers = new Map<number, () => void>()
+
+/** Starts a note on the given instrument that sounds until `noteOff`. Velocity is 0–1 and scales the volume. */
+export function noteOn(midi: number, velocity: number, instrument: Instrument = 'piano') {
+  noteOff(midi)
+  const { context: ctx, masterGain: destination } = getAudioGraph()
+  const start = instrument === 'block' ? startHeldBlock : startHeldPiano
+  heldReleasers.set(midi, start(ctx, destination, midi, velocity))
 }
 
 /** Releases a note started with `noteOn`. */
 export function noteOff(midi: number) {
-  const note = held.get(midi)
-  if (!note || !context) return
-  const { oscillator, output } = note
-  held.delete(midi)
-  const now = context.currentTime
-  output.gain.cancelScheduledValues(now)
-  output.gain.setValueAtTime(output.gain.value, now)
-  output.gain.linearRampToValueAtTime(0, now + BLOCK_RELEASE_SECONDS)
-  oscillator.stop(now + BLOCK_RELEASE_SECONDS)
+  heldReleasers.get(midi)?.()
+  heldReleasers.delete(midi)
 }
 
 /** Fades out anything still sounding. */
 export function stopAll() {
   if (!context) return
-  for (const midi of [...held.keys()]) noteOff(midi)
+  for (const midi of [...heldReleasers.keys()]) noteOff(midi)
   const now = context.currentTime
   for (const voice of sounding) {
     voice.gain.gain.cancelScheduledValues(now)
