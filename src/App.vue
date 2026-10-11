@@ -28,6 +28,7 @@ import {
   rerollProgression,
 } from './chords'
 import { optimizeInversions } from './optimizeInversions'
+import { track } from './analytics'
 
 /** A list with `value` for each chord of the current progression. */
 function perChord(value: number): number[] {
@@ -152,6 +153,7 @@ function canShiftAllOctaves(step: number): boolean {
  * possible. See `optimizeInversions` for the exact ordering of those two criteria.
  */
 function optimizeInversionsFrom(index: number) {
+  track('closest-inversions')
   stop()
   const allNotes = progression.value.chords.map((chord) => chord.notes)
   const anchor = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
@@ -162,6 +164,7 @@ function optimizeInversionsFrom(index: number) {
 }
 
 function togglePlayback() {
+  track(isPlaying.value ? 'stop' : 'play', { bpm: bpm.value, instrument: instrument.value })
   clearPreview()
   toggle()
 }
@@ -176,6 +179,7 @@ function setProgression(next: Progression) {
 }
 
 function reroll() {
+  track('reroll')
   setProgression(rerollProgression(progression.value.root, keyGroups.value, steps.value))
   showNotes(voicings.value.flat())
 }
@@ -183,6 +187,7 @@ function reroll() {
 function selectProgression(text: string) {
   const next = parseNumerals(text)
   if (!next) return
+  track('select-progression', { numerals: text.trim() })
   steps.value = next
   setProgression(buildProgression(progression.value.root, next))
 }
@@ -215,6 +220,7 @@ function selectChord(index: number, root: number) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="chordgen on GitHub"
+      data-umami-event="github-click"
     >
       <svg viewBox="0 0 16 16" width="24" height="24" fill="currentColor" aria-hidden="true">
         <path

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { MAX_CHORDS, PRESETS, parseNumerals } from '../chords'
+import { track } from '../analytics'
 import { useDismiss } from './useDismiss'
 
 defineProps<{
@@ -25,6 +26,11 @@ function choose(numerals: string) {
   emit('select', numerals)
 }
 
+function toggleLock() {
+  locked.value = !locked.value
+  track('toggle-lock', { locked: locked.value })
+}
+
 function submitCustom() {
   if (custom.value.trim() === '' || customInvalid.value) return
   choose(custom.value)
@@ -40,7 +46,7 @@ function submitCustom() {
         :aria-pressed="locked"
         :aria-label="locked ? 'Unlock progression' : 'Lock progression'"
         :title="locked ? 'Choosing a chord changes the others to match' : 'Chords can be chosen independently'"
-        @click="locked = !locked"
+        @click="toggleLock"
       >
         <!--
           A padlock. Unlocking swings the shackle open 180 degrees about its left leg (a flip
