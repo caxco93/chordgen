@@ -55,6 +55,21 @@ export function invert(notes: number[], inversion: number): number[] {
   return [...notes.slice(inversion), ...notes.slice(0, inversion).map((n) => n + 12)]
 }
 
+// The full piano: A0 to C8.
+export const PIANO_LOW = 21
+export const PIANO_HIGH = 108
+
+/** MIDI number of the C that chord notes are measured from, in scientific pitch notation (C4 = 60). */
+export function octaveBase(octave: number): number {
+  return 12 * (octave + 1)
+}
+
+/** Whether a chord's notes, inverted and placed in the given octave, stay within the piano's keys. */
+export function fitsPiano(notes: number[], octave: number, inversion: number): boolean {
+  const voiced = invert(notes, inversion).map((note) => octaveBase(octave) + note)
+  return voiced[0]! >= PIANO_LOW && voiced[voiced.length - 1]! <= PIANO_HIGH
+}
+
 export interface Progression {
   root: number
   chords: Chord[]

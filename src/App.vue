@@ -9,13 +9,18 @@ import {
   DEFAULT_KEY_GROUPS,
   INVERSION_LABELS,
   KEY_GROUPS,
+  PIANO_HIGH,
+  PIANO_LOW,
   buildProgression,
   chordOptions,
+  fitsPiano,
   invert,
   keyboardStart,
+  octaveBase,
   type Progression,
   rerollProgression,
 } from './chords'
+import { optimizeInversions } from './optimizeInversions'
 
 const keyGroups = ref([...DEFAULT_KEY_GROUPS])
 const progression = ref(buildProgression(0))
@@ -26,16 +31,8 @@ const CHORD_COUNT = 4
 const inversions = ref<number[]>(Array(CHORD_COUNT).fill(0))
 const octaves = ref<number[]>(Array(CHORD_COUNT).fill(DEFAULT_OCTAVE))
 
-// The full piano: A0 to C8.
-const PIANO_LOW = 21
-const PIANO_HIGH = 108
 const DIAGRAM_SEMITONES = 24
 const PREVIEW_MS = 2000
-
-/** MIDI number of the C that chord notes are measured from, in scientific pitch notation (C4 = 60). */
-function octaveBase(octave: number): number {
-  return 12 * (octave + 1)
-}
 
 const voicings = computed(() =>
   progression.value.chords.map((chord, i) =>
@@ -45,8 +42,7 @@ const voicings = computed(() =>
 
 /** Whether the chord at `index` voiced this way stays within the piano's keys. */
 function fits(index: number, octave: number, inversion: number): boolean {
-  const notes = invert(progression.value.chords[index]!.notes, inversion).map((note) => octaveBase(octave) + note)
-  return notes[0]! >= PIANO_LOW && notes[notes.length - 1]! <= PIANO_HIGH
+  return fitsPiano(progression.value.chords[index]!.notes, octave, inversion)
 }
 
 /** The inversion and octave one step up or down from the current voicing, or undefined past the piano's ends. */
@@ -93,6 +89,21 @@ function shiftOctave(index: number, step: number) {
   const octave = octaves.value[index]! + step
   if (!fits(index, octave, inversions.value[index]!)) return
   octaves.value[index] = octave
+  showPreview(index)
+}
+
+/**
+ * Locks chord `index`'s current voicing and re-voices every other chord around it: as close to
+ * it as possible while keeping the whole progression's span (lowest to highest note) as small as
+ * possible. See `optimizeInversions` for the exact ordering of those two criteria.
+ */
+function optimizeInversionsFrom(index: number) {
+  stop()
+  const allNotes = progression.value.chords.map((chord) => chord.notes)
+  const locked = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
+  const result = optimizeInversions(allNotes, index, locked)
+  inversions.value = result.inversions
+  octaves.value = result.octaves
   showPreview(index)
 }
 
@@ -161,6 +172,7 @@ function selectKey(root: number) {
               @step="shiftOctave(i, $event)"
             />
           </div>
+          <button type="button" class="optimize" @click="optimizeInversionsFrom(i)">Optimize</button>
         </div>
       </li>
     </ul>
@@ -279,6 +291,12 @@ main {
 
 .full-piano {
   flex: none;
+}
+
+/* Same look as the global button, just condensed to fit comfortably below the steppers. */
+.optimize {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.8rem;
 }
 
 .bpm {
