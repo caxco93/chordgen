@@ -1,9 +1,5 @@
 import { INVERSION_LABELS, fitsPiano, invert, octaveBase } from './chords'
 
-// Octaves wide enough to cover anything `fitsPiano` could ever accept, so the search below never
-// misses a valid voicing because it didn't look far enough. `fitsPiano` is the real limit.
-const OCTAVE_SEARCH = Array.from({ length: 13 }, (_, i) => i - 3)
-
 export interface Voicing {
   inversion: number
   octave: number
@@ -18,10 +14,16 @@ function voicingNotes(notes: number[], voicing: Voicing): number[] {
   return invert(notes, voicing.inversion).map((note) => octaveBase(voicing.octave) + note)
 }
 
-/** Every (inversion, octave) pair for a chord's notes that keeps it within the piano's keys. */
-function validVoicings(notes: number[]): Voicing[] {
+/**
+ * Every (inversion, octave) pair for a chord's notes that keeps it within the piano's keys,
+ * considering only octaves within one of `lockedOctave`. A chord re-voiced to sit close to the
+ * locked chord is never more than an octave away from it anyway, so this keeps the combination
+ * search below small (3 octaves × 3 inversions per chord) without ever discarding a voicing that
+ * a sane result could actually use.
+ */
+function validVoicings(notes: number[], lockedOctave: number): Voicing[] {
   const choices: Voicing[] = []
-  for (const octave of OCTAVE_SEARCH) {
+  for (let octave = lockedOctave - 1; octave <= lockedOctave + 1; octave++) {
     for (let inversion = 0; inversion < INVERSION_LABELS.length; inversion++) {
       if (fitsPiano(notes, octave, inversion)) choices.push({ inversion, octave })
     }
@@ -48,15 +50,16 @@ function closenessToLocked(notes: number[], lockedNotes: number[]): number {
  *   2. Closeness to the locked chord (secondary) — among combinations tied on span, the one
  *      whose other chords sit nearest the locked chord's notes wins, for smooth voice leading.
  *
- * Each other chord's valid (inversion, octave) pairs are enumerated independently (whatever fits
- * the piano, per `fitsPiano`), then every combination across all of them is scored and the best
- * one kept. The search space is tiny (a handful of inversions/octaves per chord, few chords), so
- * a plain exhaustive search stays readable without needing a heuristic.
+ * Each other chord's valid (inversion, octave) pairs are enumerated independently — whatever
+ * fits the piano, per `fitsPiano`, within one octave of the locked chord's own octave (see
+ * `validVoicings`) — then every combination across all of them is scored and the best one kept.
+ * The search space is tiny (3 octaves × 3 inversions per chord, few chords), so a plain
+ * exhaustive search stays readable without needing a heuristic.
  */
 export function optimizeInversions(allNotes: number[][], lockedIndex: number, lockedVoicing: Voicing): OptimizeResult {
   const lockedNotes = voicingNotes(allNotes[lockedIndex]!, lockedVoicing)
   const otherIndices = allNotes.map((_, i) => i).filter((i) => i !== lockedIndex)
-  const optionsPerChord = otherIndices.map((i) => validVoicings(allNotes[i]!))
+  const optionsPerChord = otherIndices.map((i) => validVoicings(allNotes[i]!, lockedVoicing.octave))
 
   let best: Voicing[] = []
   let bestSpan = Infinity
