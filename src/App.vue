@@ -149,6 +149,15 @@ function canShiftAllOctaves(step: number): boolean {
   return octaves.value.every((octave, i) => fits(i, octave + step, inversions.value[i]!))
 }
 
+/** What the analytics events say about the progression: the name of the key `root`, its chords and its numerals (null when mixed). */
+function progressionContext(root: number) {
+  return {
+    key: noteName(root, root),
+    progression: progression.value.chords.map((chord) => chord.name).join('-'),
+    numerals: isMixed.value ? null : numerals.value,
+  }
+}
+
 /**
  * Locks chord `index`'s current voicing and re-voices every other chord around it: as close to
  * it as possible while keeping the whole progression's span (lowest to highest note) as small as
@@ -159,12 +168,10 @@ function optimizeInversionsFrom(index: number) {
   const allNotes = progression.value.chords.map((chord) => chord.notes)
   const anchor = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
   track('closest-inversions', {
-    key: noteName(chordRoots.value[index]!, chordRoots.value[index]!),
+    ...progressionContext(chordRoots.value[index]!),
     chord: progression.value.chords[index]!.name,
     octave: anchor.octave,
     inversion: anchor.inversion,
-    progression: progression.value.chords.map((chord) => chord.name).join('-'),
-    numerals: isMixed.value ? null : numerals.value,
   })
   const result = optimizeInversions(allNotes, index, anchor)
   inversions.value = result.inversions
@@ -185,6 +192,7 @@ function secondsSinceLastToggle(): number | null {
 
 function togglePlayback() {
   track(isPlaying.value ? 'stop' : 'play', {
+    ...progressionContext(progression.value.root),
     bpm: bpm.value,
     instrument: instrument.value,
     seconds_since_last_toggle: secondsSinceLastToggle(),
