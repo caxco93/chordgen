@@ -292,16 +292,6 @@ main {
 }
 
 .chord {
-    padding: 0.5rem;
-  }
-
-  .steppers {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    column-gap: 0.25rem;
-  }
-}
-
-.chord {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -419,4 +409,13 @@ footer {
   }
 
   /* Two columns leave ~145px per card; tighten the card and let the stepper label track shrink so the arrows stay inside. */
+  .chord {
+    padding: 0.5rem;
+  }
+
+  .steppers {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 0.25rem;
+  }
+}
 </style>
