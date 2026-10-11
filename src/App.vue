@@ -8,8 +8,6 @@ import { INVERSION_LABELS, buildProgression, invert, keyboardStart, rerollProgre
 const majorScaleOnly = ref(true)
 const progression = ref(buildProgression(0))
 
-const MIN_OCTAVE = 1
-const MAX_OCTAVE = 5
 const DEFAULT_OCTAVE = 4
 const CHORD_COUNT = 4
 // Each chord's diagram, inversion and octave are set independently.
@@ -32,6 +30,22 @@ const voicings = computed(() =>
     invert(chord.notes, inversions.value[i]!).map((note) => octaveBase(octaves.value[i]!) + note),
   ),
 )
+
+/** Whether the chord at `index` voiced this way stays within the piano's keys. */
+function fits(index: number, octave: number, inversion: number): boolean {
+  const notes = invert(progression.value.chords[index]!.notes, inversion).map((note) => octaveBase(octave) + note)
+  return notes[0]! >= PIANO_LOW && notes[notes.length - 1]! <= PIANO_HIGH
+}
+
+/** The inversion and octave one step up or down from the current voicing, or undefined past the piano's ends. */
+function inversionTarget(index: number, step: number): { inversion: number; octave: number } | undefined {
+  const count = INVERSION_LABELS.length
+  const next = inversions.value[index]! + step
+  const inversion = (next + count) % count
+  const octave = octaves.value[index]! + Math.floor(next / count)
+  return fits(index, octave, inversion) ? { inversion, octave } : undefined
+}
+
 const { bpm, loop, sound, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM } =
   usePlayback(voicings)
 
@@ -56,22 +70,17 @@ onUnmounted(clearPreview)
 
 /** Steps the voicing up or down, rolling over into the neighbouring octave past either end. */
 function shiftInversion(index: number, step: number) {
-  const next = inversions.value[index]! + step
-  const last = INVERSION_LABELS.length - 1
-  if (next < 0) {
-    inversions.value[index] = last
-    octaves.value[index]!--
-  } else if (next > last) {
-    inversions.value[index] = 0
-    octaves.value[index]!++
-  } else {
-    inversions.value[index] = next
-  }
+  const target = inversionTarget(index, step)
+  if (!target) return
+  inversions.value[index] = target.inversion
+  octaves.value[index] = target.octave
   showPreview(index)
 }
 
 function shiftOctave(index: number, step: number) {
-  octaves.value[index] = Math.min(Math.max(octaves.value[index]! + step, MIN_OCTAVE), MAX_OCTAVE)
+  const octave = octaves.value[index]! + step
+  if (!fits(index, octave, inversions.value[index]!)) return
+  octaves.value[index] = octave
   showPreview(index)
 }
 
@@ -114,15 +123,15 @@ function reroll() {
             <ArrowStepper
               what="inversion"
               :label="INVERSION_LABELS[inversions[i]!]!"
-              :can-previous="inversions[i] !== 0 || octaves[i]! > MIN_OCTAVE"
-              :can-next="inversions[i] !== INVERSION_LABELS.length - 1 || octaves[i]! < MAX_OCTAVE"
+              :can-previous="!!inversionTarget(i, -1)"
+              :can-next="!!inversionTarget(i, 1)"
               @step="shiftInversion(i, $event)"
             />
             <ArrowStepper
               what="octave"
               :label="`Octave ${octaves[i]}`"
-              :can-previous="octaves[i] !== MIN_OCTAVE"
-              :can-next="octaves[i] !== MAX_OCTAVE"
+              :can-previous="fits(i, octaves[i]! - 1, inversions[i]!)"
+              :can-next="fits(i, octaves[i]! + 1, inversions[i]!)"
               subtle
               @step="shiftOctave(i, $event)"
             />
