@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import ArrowStepper from './components/ArrowStepper.vue'
 import ChordSelect from './components/ChordSelect.vue'
 import MultiSelect from './components/MultiSelect.vue'
@@ -21,6 +21,7 @@ import {
   fitsPiano,
   invert,
   keyboardStart,
+  noteName,
   octaveBase,
   parseNumerals,
   type Progression,
@@ -28,6 +29,7 @@ import {
   rerollProgression,
 } from './chords'
 import { optimizeInversions } from './optimizeInversions'
+import { track } from './analytics'
 
 /** A list with `value` for each chord of the current progression. */
 function perChord(value: number): number[] {
@@ -84,6 +86,7 @@ const midi = ref(false)
 const keys = usePressedKeys(instrument)
 const { pressed } = keys
 useMidiInput(keys, midi)
+watch(midi, (enabled) => track('toggle-midi', { enabled }))
 
 // A brief, fading look at a chord on the full piano. Each trigger restarts it.
 const previewNotes = ref<number[]>([])
@@ -146,6 +149,15 @@ function canShiftAllOctaves(step: number): boolean {
   return octaves.value.every((octave, i) => fits(i, octave + step, inversions.value[i]!))
 }
 
+/** What the analytics events say about the progression: the name of the key `root`, its chords and its numerals (null when mixed). */
+function progressionContext(root: number) {
+  return {
+    key: noteName(root, root),
+    progression: progression.value.chords.map((chord) => chord.name).join('-'),
+    numerals: isMixed.value ? null : numerals.value,
+  }
+}
+
 /**
  * Locks chord `index`'s current voicing and re-voices every other chord around it: as close to
  * it as possible while keeping the whole progression's span (lowest to highest note) as small as
@@ -155,13 +167,36 @@ function optimizeInversionsFrom(index: number) {
   stop()
   const allNotes = progression.value.chords.map((chord) => chord.notes)
   const anchor = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
+  track('closest-inversions', {
+    ...progressionContext(chordRoots.value[index]!),
+    chord: progression.value.chords[index]!.name,
+    octave: anchor.octave,
+    inversion: anchor.inversion,
+  })
   const result = optimizeInversions(allNotes, index, anchor)
   inversions.value = result.inversions
   octaves.value = result.octaves
   showSequence()
 }
 
+// When the Play/Stop button was last pressed, for the analytics events.
+let lastToggleAt: number | undefined
+
+/** Whole seconds since the previous press of the Play/Stop button, or null on the first press. */
+function secondsSinceLastToggle(): number | null {
+  const now = performance.now()
+  const seconds = lastToggleAt === undefined ? null : Math.round((now - lastToggleAt) / 1000)
+  lastToggleAt = now
+  return seconds
+}
+
 function togglePlayback() {
+  track(isPlaying.value ? 'stop' : 'play', {
+    ...progressionContext(progression.value.root),
+    bpm: bpm.value,
+    instrument: instrument.value,
+    seconds_since_last_toggle: secondsSinceLastToggle(),
+  })
   clearPreview()
   toggle()
 }
@@ -176,13 +211,16 @@ function setProgression(next: Progression) {
 }
 
 function reroll() {
+  track('reroll')
   setProgression(rerollProgression(progression.value.root, keyGroups.value, steps.value))
   showNotes(voicings.value.flat())
 }
 
-function selectProgression(text: string) {
+function selectProgression(text: string, custom: boolean) {
   const next = parseNumerals(text)
   if (!next) return
+  const normalized = next.map((step) => step.numeral).join('-')
+  track('select-progression', { numerals: normalized, custom })
   steps.value = next
   setProgression(buildProgression(progression.value.root, next))
 }
@@ -215,6 +253,7 @@ function selectChord(index: number, root: number) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="chordgen on GitHub"
+      data-umami-event="github-click"
     >
       <svg viewBox="0 0 16 16" width="24" height="24" fill="currentColor" aria-hidden="true">
         <path
