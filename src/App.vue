@@ -172,8 +172,23 @@ function optimizeInversionsFrom(index: number) {
   showSequence()
 }
 
+// When the Play/Stop button was last pressed, for the analytics events.
+let lastToggleAt: number | undefined
+
+/** Whole seconds since the previous press of the Play/Stop button, or null on the first press. */
+function secondsSinceLastToggle(): number | null {
+  const now = performance.now()
+  const seconds = lastToggleAt === undefined ? null : Math.round((now - lastToggleAt) / 1000)
+  lastToggleAt = now
+  return seconds
+}
+
 function togglePlayback() {
-  track(isPlaying.value ? 'stop' : 'play', { bpm: bpm.value, instrument: instrument.value })
+  track(isPlaying.value ? 'stop' : 'play', {
+    bpm: bpm.value,
+    instrument: instrument.value,
+    seconds_since_last_toggle: secondsSinceLastToggle(),
+  })
   clearPreview()
   toggle()
 }
