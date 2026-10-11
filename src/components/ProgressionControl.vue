@@ -121,8 +121,7 @@ function submitCustom() {
 
 .lock[aria-pressed='true'] {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
-  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 45%, black);
 }
 
 .current {
