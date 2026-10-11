@@ -20,10 +20,14 @@ import {
   type Progression,
   rerollProgression,
 } from './chords'
-import { optimizeInversions } from './optimizeInversions'
+import { optimizeInversions, type OptimizeMode } from './optimizeInversions'
 
 const keyGroups = ref([...DEFAULT_KEY_GROUPS])
 const progression = ref(buildProgression(0))
+
+// One mode for the whole app: which quantity "Optimize" prioritizes. Shared by every chord's
+// radio group below, so picking it for one chord picks it for all of them.
+const optimizeMode = ref<OptimizeMode>('span')
 
 const DEFAULT_OCTAVE = 4
 const CHORD_COUNT = 4
@@ -93,15 +97,14 @@ function shiftOctave(index: number, step: number) {
 }
 
 /**
- * Locks chord `index`'s current voicing and re-voices every other chord around it: as close to
- * it as possible while keeping the whole progression's span (lowest to highest note) as small as
- * possible. See `optimizeInversions` for the exact ordering of those two criteria.
+ * Locks chord `index`'s current voicing and re-voices every other chord around it, according to
+ * `optimizeMode` (see `optimizeInversions` for each mode's exact criteria and their order).
  */
 function optimizeInversionsFrom(index: number) {
   stop()
   const allNotes = progression.value.chords.map((chord) => chord.notes)
   const locked = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
-  const result = optimizeInversions(allNotes, index, locked)
+  const result = optimizeInversions(allNotes, index, locked, optimizeMode.value)
   inversions.value = result.inversions
   octaves.value = result.octaves
   showPreview(index)
@@ -172,7 +175,17 @@ function selectKey(root: number) {
               @step="shiftOctave(i, $event)"
             />
           </div>
-          <button type="button" class="optimize" @click="optimizeInversionsFrom(i)">Optimize Inversions</button>
+          <div class="optimize-row">
+            <button type="button" class="optimize" @click="optimizeInversionsFrom(i)">Optimize</button>
+            <label>
+              <input type="radio" :name="`optimize-mode-${i}`" value="keyChanges" v-model="optimizeMode" />
+              Key Changes
+            </label>
+            <label>
+              <input type="radio" :name="`optimize-mode-${i}`" value="span" v-model="optimizeMode" />
+              Span
+            </label>
+          </div>
         </div>
       </li>
     </ul>
@@ -293,7 +306,16 @@ main {
   flex: none;
 }
 
-/* Same look as the global button, just condensed to fit comfortably below the steppers. */
+.optimize-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+/* Same look as the global button, just condensed to fit comfortably next to the radios. */
 .optimize {
   font-size: 0.85rem;
   padding: 0.35rem 0.8rem;
