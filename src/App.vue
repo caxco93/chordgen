@@ -31,7 +31,7 @@ const steps = ref<Step[]>(DEFAULT_STEPS)
 const progression = ref(buildProgression(0, steps.value))
 // Chords picked from different keys no longer form the progression.
 const isMixed = computed(() => chordRoots.value.some((root) => root !== chordRoots.value[0]))
-const numerals = computed((() => steps.value.map((step) => step.numeral).join('-'))
+const numerals = computed(() => steps.value.map((step) => step.numeral).join('-'))
 
 const DEFAULT_OCTAVE = 4
 // Each chord's diagram, inversion and octave are set independently.
