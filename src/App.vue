@@ -5,6 +5,7 @@ import ChordSelect from './components/ChordSelect.vue'
 import MultiSelect from './components/MultiSelect.vue'
 import PianoKeyboard from './components/PianoKeyboard.vue'
 import ProgressionControl from './components/ProgressionControl.vue'
+import { useMidiInput } from './useMidiInput'
 import { usePlayback } from './usePlayback'
 import {
   DEFAULT_KEY_GROUPS,
@@ -72,6 +73,8 @@ function inversionTarget(index: number, step: number): { inversion: number; octa
 
 const { bpm, loop, sound, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM } =
   usePlayback(voicings)
+
+useMidiInput()
 
 // A brief, fading look at a chord on the full piano. Each trigger restarts it.
 const previewNotes = ref<number[]>([])
