@@ -1,5 +1,5 @@
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue'
-import { playChord, stopAll } from './audio'
+import { playChord, stopAll, type Instrument } from './audio'
 
 const BEATS_PER_BAR = 4
 const MIN_BPM = 30
@@ -9,11 +9,13 @@ const MAX_BPM = 300
  * Plays a sequence of chords, each held for one bar, repeating while `loop` is
  * set. `chords` yields the MIDI notes of each chord; `currentIndex` is the
  * chord whose bar it currently is. With `sound` off the bars still advance.
+ * `instrument` picks which synth (see `./audio`) plays the notes.
  */
 export function usePlayback(chords: Ref<number[][]>) {
   const loop = ref(true)
   const sound = ref(true)
   const bpm = ref(120)
+  const instrument = ref<Instrument>('piano')
   const currentIndex = ref<number | null>(null)
   const isPlaying = computed(() => currentIndex.value !== null)
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -33,7 +35,7 @@ export function usePlayback(chords: Ref<number[][]>) {
     }
     const seconds = barSeconds()
     currentIndex.value = index
-    if (sound.value) playChord(chords.value[index]!, seconds)
+    if (sound.value) playChord(chords.value[index]!, seconds, instrument.value)
     timer = setTimeout(() => playBar(index + 1), seconds * 1000)
   }
 
@@ -54,5 +56,5 @@ export function usePlayback(chords: Ref<number[][]>) {
 
   onUnmounted(stop)
 
-  return { bpm, loop, sound, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM }
+  return { bpm, loop, sound, instrument, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM }
 }

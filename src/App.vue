@@ -5,6 +5,7 @@ import ChordSelect from './components/ChordSelect.vue'
 import MultiSelect from './components/MultiSelect.vue'
 import PianoKeyboard from './components/PianoKeyboard.vue'
 import ProgressionControl from './components/ProgressionControl.vue'
+import { INSTRUMENTS } from './audio'
 import { usePlayback } from './usePlayback'
 import {
   DEFAULT_KEY_GROUPS,
@@ -70,7 +71,7 @@ function inversionTarget(index: number, step: number): { inversion: number; octa
   return fits(index, octave, inversion) ? { inversion, octave } : undefined
 }
 
-const { bpm, loop, sound, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM } =
+const { bpm, loop, sound, instrument, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM } =
   usePlayback(voicings)
 
 // A brief, fading look at a chord on the full piano. Each trigger restarts it.
@@ -257,6 +258,12 @@ function selectChord(index: number, root: number) {
         <input v-model.number="bpm" type="number" class="bpm" :min="MIN_BPM" :max="MAX_BPM" />
         BPM
       </label>
+      <label>
+        <select v-model="instrument" class="instrument">
+          <option v-for="option in INSTRUMENTS" :key="option.id" :value="option.id">{{ option.label }}</option>
+        </select>
+        Instrument
+      </label>
     </footer>
     <PianoKeyboard
       class="full-piano"
@@ -366,6 +373,15 @@ main {
 
 .bpm {
   width: 4rem;
+  padding: 0.3rem 0.4rem;
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.instrument {
   padding: 0.3rem 0.4rem;
   font: inherit;
   color: inherit;
