@@ -9,10 +9,14 @@ import {
   DEFAULT_KEY_GROUPS,
   INVERSION_LABELS,
   KEY_GROUPS,
+  PIANO_HIGH,
+  PIANO_LOW,
   buildProgression,
   chordOptions,
+  fitsPiano,
   invert,
   keyboardStart,
+  octaveBase,
   type Progression,
   rerollProgression,
 } from './chords'
@@ -26,16 +30,8 @@ const CHORD_COUNT = 4
 const inversions = ref<number[]>(Array(CHORD_COUNT).fill(0))
 const octaves = ref<number[]>(Array(CHORD_COUNT).fill(DEFAULT_OCTAVE))
 
-// The full piano: A0 to C8.
-const PIANO_LOW = 21
-const PIANO_HIGH = 108
 const DIAGRAM_SEMITONES = 24
 const PREVIEW_MS = 2000
-
-/** MIDI number of the C that chord notes are measured from, in scientific pitch notation (C4 = 60). */
-function octaveBase(octave: number): number {
-  return 12 * (octave + 1)
-}
 
 const voicings = computed(() =>
   progression.value.chords.map((chord, i) =>
@@ -45,8 +41,7 @@ const voicings = computed(() =>
 
 /** Whether the chord at `index` voiced this way stays within the piano's keys. */
 function fits(index: number, octave: number, inversion: number): boolean {
-  const notes = invert(progression.value.chords[index]!.notes, inversion).map((note) => octaveBase(octave) + note)
-  return notes[0]! >= PIANO_LOW && notes[notes.length - 1]! <= PIANO_HIGH
+  return fitsPiano(progression.value.chords[index]!.notes, octave, inversion)
 }
 
 /** The inversion and octave one step up or down from the current voicing, or undefined past the piano's ends. */
