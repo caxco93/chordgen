@@ -12,8 +12,7 @@ const MIN_OCTAVE = 1
 const MAX_OCTAVE = 5
 const DEFAULT_OCTAVE = 4
 const CHORD_COUNT = 4
-// Each chord's diagram, inversion and octave are set independently. A closed chord is always at its defaults.
-const expanded = ref<boolean[]>(Array(CHORD_COUNT).fill(false))
+// Each chord's diagram, inversion and octave are set independently.
 const inversions = ref<number[]>(Array(CHORD_COUNT).fill(0))
 const octaves = ref<number[]>(Array(CHORD_COUNT).fill(DEFAULT_OCTAVE))
 
@@ -55,13 +54,6 @@ function clearPreview() {
 
 onUnmounted(clearPreview)
 
-function toggleExpanded(index: number) {
-  expanded.value[index] = !expanded.value[index]
-  inversions.value[index] = 0
-  octaves.value[index] = DEFAULT_OCTAVE
-  if (expanded.value[index]) showPreview(index)
-}
-
 /** Steps the voicing up or down, rolling over into the neighbouring octave past either end. */
 function shiftInversion(index: number, step: number) {
   const next = inversions.value[index]! + step
@@ -91,7 +83,6 @@ function togglePlayback() {
 function reroll() {
   stop()
   clearPreview()
-  expanded.value.fill(false)
   inversions.value.fill(0)
   octaves.value.fill(DEFAULT_OCTAVE)
   progression.value = rerollProgression(progression.value.root, majorScaleOnly.value)
@@ -108,37 +99,34 @@ function reroll() {
         :class="{ playing: currentIndex === i }"
         @mouseenter="showPreview(i)"
       >
-        <button
-          type="button"
-          class="chord-button"
-          :class="{ selected: expanded[i] }"
-          :aria-expanded="expanded[i]"
-          @click="toggleExpanded(i)"
-        >
+        <div class="chord-header">
           <span class="name">{{ chord.name }}</span>
           <span class="numeral">{{ chord.numeral }}</span>
-        </button>
-        <div v-if="expanded[i]" class="detail">
+        </div>
+        <div class="detail">
           <PianoKeyboard
             class="detail-piano"
             :notes="voicings[i]!"
             :low="octaveBase(octaves[i]!) + keyboardStart(chord.notes)"
             :high="octaveBase(octaves[i]!) + keyboardStart(chord.notes) + DIAGRAM_SEMITONES - 1"
           />
-          <ArrowStepper
-            what="inversion"
-            :label="INVERSION_LABELS[inversions[i]!]!"
-            :can-previous="inversions[i] !== 0 || octaves[i]! > MIN_OCTAVE"
-            :can-next="inversions[i] !== INVERSION_LABELS.length - 1 || octaves[i]! < MAX_OCTAVE"
-            @step="shiftInversion(i, $event)"
-          />
-          <ArrowStepper
-            what="octave"
-            :label="`Octave ${octaves[i]}`"
-            :can-previous="octaves[i] !== MIN_OCTAVE"
-            :can-next="octaves[i] !== MAX_OCTAVE"
-            @step="shiftOctave(i, $event)"
-          />
+          <div class="steppers">
+            <ArrowStepper
+              what="inversion"
+              :label="INVERSION_LABELS[inversions[i]!]!"
+              :can-previous="inversions[i] !== 0 || octaves[i]! > MIN_OCTAVE"
+              :can-next="inversions[i] !== INVERSION_LABELS.length - 1 || octaves[i]! < MAX_OCTAVE"
+              @step="shiftInversion(i, $event)"
+            />
+            <ArrowStepper
+              what="octave"
+              :label="`Octave ${octaves[i]}`"
+              :can-previous="octaves[i] !== MIN_OCTAVE"
+              :can-next="octaves[i] !== MAX_OCTAVE"
+              subtle
+              @step="shiftOctave(i, $event)"
+            />
+          </div>
         </div>
       </li>
     </ul>
@@ -214,22 +202,14 @@ main {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-.chord-button {
-  flex: 1;
+.chord-header {
+  flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  padding: 0;
-  border: none;
-  border-radius: 0.5rem;
-  background: none;
-}
-
-.chord-button.selected {
-  flex: none;
 }
 
 .detail {
@@ -245,6 +225,26 @@ main {
 
 .detail-piano {
   min-height: 0;
+}
+
+/*
+ * Grid columns (previous arrow / label / next arrow) are sized across both rows at once,
+ * so the Inversion and Octave arrows land in the same column. The label column's min-width
+ * is set in `ch` to fit the longest label that can ever appear ("Root position" / "1st
+ * inversion" / "2nd inversion", all 13 characters; "Octave N" is shorter) rather than sizing
+ * to 1fr or to the current chord's own labels. A 1fr track pushes the next-arrow to the far
+ * edge of the card instead of right after the label, and sizing per-chord content would make
+ * the arrows jump around as the chord progression rerolls. The fixed `ch` width keeps the
+ * arrows sitting right next to the label and stable across every chord.
+ */
+.steppers {
+  display: grid;
+  grid-template-columns: auto minmax(13ch, auto) auto;
+  justify-content: center;
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.35rem;
+  width: 100%;
 }
 
 .full-piano {
