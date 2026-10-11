@@ -1,16 +1,15 @@
-import { onMounted, onUnmounted, ref, type Ref } from 'vue'
-import { noteOff, noteOn, type Instrument } from './audio'
+import { onUnmounted, watch, type Ref } from 'vue'
+import type { usePressedKeys } from './usePressedKeys'
 
 const NOTE_OFF = 0x80
 const NOTE_ON = 0x90
 const MAX_VELOCITY = 127
 
 /**
- * Plays notes on the selected instrument from any connected MIDI input device, scaled by key velocity.
- * `pressed` holds the MIDI notes currently held down.
+ * Presses keys from any connected MIDI input device, scaled by key velocity.
+ * Web MIDI access is only requested once `enabled` is first turned on, and input is ignored while it is off.
  */
-export function useMidiInput(instrument: Ref<Instrument>) {
-  const pressed = ref<number[]>([])
+export function useMidiInput(keys: ReturnType<typeof usePressedKeys>, enabled: Ref<boolean>) {
   let access: MIDIAccess | undefined
 
   function handleMessage(event: MIDIMessageEvent) {
@@ -18,11 +17,9 @@ export function useMidiInput(instrument: Ref<Instrument>) {
     const type = status & 0xf0
     // A note-on with velocity 0 is the running-status way of sending note-off.
     if (type === NOTE_ON && velocity > 0) {
-      noteOn(note, velocity / MAX_VELOCITY, instrument.value)
-      if (!pressed.value.includes(note)) pressed.value = [...pressed.value, note]
+      keys.press(note, velocity / MAX_VELOCITY)
     } else if (type === NOTE_OFF || type === NOTE_ON) {
-      noteOff(note)
-      pressed.value = pressed.value.filter((n) => n !== note)
+      keys.release(note)
     }
   }
 
@@ -31,22 +28,38 @@ export function useMidiInput(instrument: Ref<Instrument>) {
     for (const input of access.inputs.values()) input.onmidimessage = handleMessage
   }
 
-  onMounted(async () => {
-    if (!navigator.requestMIDIAccess) return
-    try {
-      access = await navigator.requestMIDIAccess()
-    } catch {
-      return // Permission denied; MIDI input is optional.
-    }
-    listen()
-    access.onstatechange = listen // Picks up devices plugged in later.
-  })
-
-  onUnmounted(() => {
+  function stopListening() {
     if (!access) return
     access.onstatechange = null
     for (const input of access.inputs.values()) input.onmidimessage = null
-  })
+  }
 
-  return { pressed }
+  async function start() {
+    if (!access) {
+      if (!navigator.requestMIDIAccess) return
+      try {
+        access = await navigator.requestMIDIAccess()
+      } catch {
+        return // Permission denied; MIDI input is optional.
+      }
+    }
+    if (!enabled.value) return // Turned off again while the permission prompt was open.
+    listen()
+    access.onstatechange = listen // Picks up devices plugged in later.
+  }
+
+  watch(
+    enabled,
+    (on) => {
+      if (on) {
+        void start()
+      } else {
+        stopListening()
+        keys.releaseAll()
+      }
+    },
+    { immediate: true },
+  )
+
+  onUnmounted(stopListening)
 }

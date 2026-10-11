@@ -14,6 +14,15 @@ const props = defineProps<{
   fadeKey?: number
   /** MIDI notes to paint as held-down keys. */
   pressed?: number[]
+  /** Let the mouse play the keys. */
+  playable?: boolean
+}>()
+
+const emit = defineEmits<{
+  /** A key was pressed with the mouse. */
+  press: [midi: number]
+  /** The mouse let go of, or left, a key it pressed. */
+  release: [midi: number]
 }>()
 
 const WHITE_PITCH_CLASSES = new Set([0, 2, 4, 5, 7, 9, 11])
@@ -36,6 +45,26 @@ const keys = computed<Key[]>(() => {
     return { midi, black: true, x: whitesSoFar }
   })
 })
+
+// Keys the mouse is holding, so moving over a key held by MIDI doesn't release it.
+const mouseHeld = new Set<number>()
+
+/** Pointer listeners for one key, or none when the keyboard is display-only. */
+function keyEvents(midi: number) {
+  if (!props.playable) return {}
+  const release = () => {
+    if (mouseHeld.delete(midi)) emit('release', midi)
+  }
+  return {
+    pointerdown: () => {
+      mouseHeld.add(midi)
+      emit('press', midi)
+    },
+    pointerup: release,
+    pointerleave: release,
+    pointercancel: release,
+  }
+}
 
 const whiteKeys = computed(() => keys.value.filter((key) => !key.black))
 const blackKeys = computed(() => keys.value.filter((key) => key.black))
@@ -60,7 +89,8 @@ const dots = computed(() =>
       v-for="key in whiteKeys"
       :key="key.midi"
       class="white"
-      :class="{ pressed: pressed?.includes(key.midi) }"
+      :class="{ pressed: pressed?.includes(key.midi), playable }"
+      v-on="keyEvents(key.midi)"
       :x="key.x - 0.5"
       y="0"
       width="1"
@@ -70,7 +100,8 @@ const dots = computed(() =>
       v-for="key in blackKeys"
       :key="key.midi"
       class="black"
-      :class="{ pressed: pressed?.includes(key.midi) }"
+      :class="{ pressed: pressed?.includes(key.midi), playable }"
+      v-on="keyEvents(key.midi)"
       :x="key.x - BLACK_WIDTH / 2"
       y="0"
       :width="BLACK_WIDTH"
@@ -99,6 +130,10 @@ const dots = computed(() =>
 
 .black {
   fill: #222;
+}
+
+.playable {
+  cursor: pointer;
 }
 
 .white.pressed,
