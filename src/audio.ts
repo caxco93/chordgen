@@ -19,7 +19,7 @@ export type Instrument = 'piano' | 'block'
 
 export const INSTRUMENTS: { id: Instrument; label: string }[] = [
   { id: 'piano', label: 'Piano' },
-  { id: 'block', label: 'Block chord' },
+  { id: 'block', label: 'Synth I' },
 ]
 
 let context: AudioContext | null = null
