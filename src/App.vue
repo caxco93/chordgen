@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import ArrowStepper from './components/ArrowStepper.vue'
 import ChordSelect from './components/ChordSelect.vue'
 import MultiSelect from './components/MultiSelect.vue'
@@ -86,6 +86,7 @@ const midi = ref(false)
 const keys = usePressedKeys(instrument)
 const { pressed } = keys
 useMidiInput(keys, midi)
+watch(midi, (enabled) => track('toggle-midi', { enabled }))
 
 // A brief, fading look at a chord on the full piano. Each trigger restarts it.
 const previewNotes = ref<number[]>([])
