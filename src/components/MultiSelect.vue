@@ -14,12 +14,16 @@ const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 useDismiss(root, () => (open.value = false))
 
-const summary = computed(() =>
-  props.options
-    .filter((o) => selected.value.includes(o.id))
+function summarize(ids: string[]): string {
+  return props.options
+    .filter((o) => ids.includes(o.id))
     .map((o) => o.label)
-    .join(', '),
-)
+    .join(', ')
+}
+
+const summary = computed(() => summarize(selected.value))
+// The summary with everything selected is the widest it can get.
+const widestSummary = computed(() => summarize(props.options.map((o) => o.id)))
 
 function toggle(id: string) {
   const next = selected.value.includes(id) ? selected.value.filter((s) => s !== id) : [...selected.value, id]
@@ -30,7 +34,11 @@ function toggle(id: string) {
 <template>
   <div ref="root" class="multi-select">
     <button type="button" aria-haspopup="listbox" :aria-expanded="open" @click="open = !open">
-      {{ label }}: {{ summary }} ▾
+      <span class="summary">
+        <span>{{ label }}: {{ summary }}</span>
+        <span class="sizer" aria-hidden="true">{{ label }}: {{ widestSummary }}</span>
+      </span>
+      ▾
     </button>
     <ul v-if="open" class="options" role="listbox" aria-multiselectable="true">
       <li v-for="option in options" :key="option.id" role="option" :aria-selected="selected.includes(option.id)">
@@ -46,6 +54,26 @@ function toggle(id: string) {
 <style scoped>
 .multi-select {
   position: relative;
+}
+
+.multi-select button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Both spans share one grid cell, so the button is always as wide as the widest summary. */
+.summary {
+  display: grid;
+  text-align: left;
+}
+
+.summary > * {
+  grid-area: 1 / 1;
+}
+
+.sizer {
+  visibility: hidden;
 }
 
 .options {
