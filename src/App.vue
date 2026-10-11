@@ -4,9 +4,11 @@ import ArrowStepper from './components/ArrowStepper.vue'
 import ChordSelect from './components/ChordSelect.vue'
 import MultiSelect from './components/MultiSelect.vue'
 import PianoKeyboard from './components/PianoKeyboard.vue'
+import ProgressionControl from './components/ProgressionControl.vue'
 import { usePlayback } from './usePlayback'
 import {
   DEFAULT_KEY_GROUPS,
+  DEFAULT_STEPS,
   INVERSION_LABELS,
   KEY_GROUPS,
   PIANO_HIGH,
@@ -17,19 +19,33 @@ import {
   invert,
   keyboardStart,
   octaveBase,
+  parseNumerals,
   type Progression,
+  type Step,
   rerollProgression,
 } from './chords'
 import { optimizeInversions } from './optimizeInversions'
 
+/** A list with `value` for each chord of the current progression. */
+function perChord(value: number): number[] {
+  return Array(steps.value.length).fill(value)
+}
+
 const keyGroups = ref([...DEFAULT_KEY_GROUPS])
-const progression = ref(buildProgression(0))
+const steps = ref<Step[]>(DEFAULT_STEPS)
+const progression = ref(buildProgression(0, steps.value))
+// Chords picked from different keys no longer form the progression.
+const isMixed = computed(() => chordRoots.value.some((root) => root !== chordRoots.value[0]))
+const numerals = computed(() => steps.value.map((step) => step.numeral).join('-'))
 
 const DEFAULT_OCTAVE = 4
-const CHORD_COUNT = 4
 // Each chord's diagram, inversion and octave are set independently.
-const inversions = ref<number[]>(Array(CHORD_COUNT).fill(0))
-const octaves = ref<number[]>(Array(CHORD_COUNT).fill(DEFAULT_OCTAVE))
+const inversions = ref<number[]>(perChord(0))
+const octaves = ref<number[]>(perChord(DEFAULT_OCTAVE))
+// The key each chord was picked from. They all match while the progression is locked.
+const chordRoots = ref<number[]>(perChord(progression.value.root))
+// While locked, picking a chord moves the whole progression to that chord's key.
+const locked = ref(true)
 
 const DIAGRAM_SEMITONES = 24
 const PREVIEW_MS = 2000
@@ -63,7 +79,11 @@ const previewId = ref(0)
 let previewTimer: ReturnType<typeof setTimeout> | undefined
 
 function showPreview(index: number) {
-  previewNotes.value = voicings.value[index]!
+  showNotes(voicings.value[index]!)
+}
+
+function showNotes(notes: number[]) {
+  previewNotes.value = notes
   previewId.value++
   clearTimeout(previewTimer)
   previewTimer = setTimeout(() => (previewNotes.value = []), PREVIEW_MS)
@@ -92,6 +112,17 @@ function shiftOctave(index: number, step: number) {
   showPreview(index)
 }
 
+/** Moves every chord one octave up or down together, unless any of them would leave the piano. */
+function shiftAllOctaves(step: number) {
+  if (!canShiftAllOctaves(step)) return
+  octaves.value = octaves.value.map((octave) => octave + step)
+  showNotes(voicings.value.flat())
+}
+
+function canShiftAllOctaves(step: number): boolean {
+  return octaves.value.every((octave, i) => fits(i, octave + step, inversions.value[i]!))
+}
+
 /**
  * Locks chord `index`'s current voicing and re-voices every other chord around it: as close to
  * it as possible while keeping the whole progression's span (lowest to highest note) as small as
@@ -100,8 +131,8 @@ function shiftOctave(index: number, step: number) {
 function optimizeInversionsFrom(index: number) {
   stop()
   const allNotes = progression.value.chords.map((chord) => chord.notes)
-  const locked = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
-  const result = optimizeInversions(allNotes, index, locked)
+  const anchor = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
+  const result = optimizeInversions(allNotes, index, anchor)
   inversions.value = result.inversions
   octaves.value = result.octaves
   showPreview(index)
@@ -115,26 +146,60 @@ function togglePlayback() {
 function setProgression(next: Progression) {
   stop()
   clearPreview()
-  inversions.value.fill(0)
-  octaves.value.fill(DEFAULT_OCTAVE)
   progression.value = next
+  inversions.value = perChord(0)
+  octaves.value = perChord(DEFAULT_OCTAVE)
+  chordRoots.value = perChord(next.root)
 }
 
 function reroll() {
-  setProgression(rerollProgression(progression.value.root, keyGroups.value))
+  setProgression(rerollProgression(progression.value.root, keyGroups.value, steps.value))
+  showNotes(voicings.value.flat())
 }
 
-function selectKey(root: number) {
-  if (root !== progression.value.root) setProgression(buildProgression(root))
+function selectProgression(text: string) {
+  const next = parseNumerals(text)
+  if (!next) return
+  steps.value = next
+  setProgression(buildProgression(progression.value.root, next))
+}
+
+function selectChord(index: number, root: number) {
+  if (locked.value) {
+    if (chordRoots.value.some((r) => r !== root)) setProgression(buildProgression(root, steps.value))
+    return
+  }
+  if (root === chordRoots.value[index]) return
+  stop()
+  clearPreview()
+  chordRoots.value[index] = root
+  inversions.value[index] = 0
+  if (!fits(index, octaves.value[index]!, 0)) octaves.value[index] = DEFAULT_OCTAVE
+  progression.value = {
+    ...progression.value,
+    chords: progression.value.chords.map((chord, i) =>
+      i === index ? buildProgression(root, steps.value).chords[index]! : chord,
+    ),
+  }
 }
 </script>
 
 <template>
   <main>
+    <header class="toolbar">
+      <ProgressionControl v-model:locked="locked" :current="isMixed ? null : numerals" @select="selectProgression" />
+      <ArrowStepper
+        what="octave"
+        label="Octave"
+        :can-previous="canShiftAllOctaves(-1)"
+        :can-next="canShiftAllOctaves(1)"
+        @step="shiftAllOctaves"
+      />
+    </header>
     <ul class="chords">
       <li
         v-for="(chord, i) in progression.chords"
-        :key="chord.numeral"
+        :key="i"
         class="chord"
         :class="{ playing: currentIndex === i }"
         @mouseenter="showPreview(i)"
@@ -142,11 +207,11 @@ function selectKey(root: number) {
         <div class="chord-header">
           <ChordSelect
             :name="chord.name"
-            :options="chordOptions(i)"
-            :selected="progression.root"
-            @select="selectKey"
+            :options="chordOptions(steps, i)"
+            :selected="chordRoots[i]!"
+            @select="selectChord(i, $event)"
           />
-          <span class="numeral">{{ chord.numeral }}</span>
+          <span class="numeral" :class="{ hidden: isMixed }">{{ chord.numeral }}</span>
         </div>
         <div class="detail">
           <PianoKeyboard
@@ -177,7 +242,7 @@ function selectKey(root: number) {
       </li>
     </ul>
     <footer>
-      <button type="button" @click="reroll">Reroll I-V-vi-IV</button>
+      <button type="button" @click="reroll">Reroll</button>
       <MultiSelect v-model="keyGroups" label="Keys for I" :options="KEY_GROUPS" />
       <button type="button" @click="togglePlayback">{{ isPlaying ? 'Stop' : 'Play' }}</button>
       <label>
@@ -312,6 +377,21 @@ main {
 .numeral {
   font-size: 1.5rem;
   color: var(--muted);
+}
+
+/* Keeps its space so the layout doesn't shift. */
+.numeral.hidden {
+  visibility: hidden;
+}
+
+.toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  font-size: 0.9rem;
 }
 
 footer {
