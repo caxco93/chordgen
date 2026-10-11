@@ -29,7 +29,10 @@ const PROGRESSION: [number, boolean][] = [
 export interface Chord {
   numeral: string
   name: string
-  /** Semitones above the lowest C of a two-octave keyboard, bottom to top, in root position. */
+  /**
+   * Semitones above the key's octave C, bottom to top, in root position. Roots are not
+   * wrapped into one octave, so chords above the key's root (e.g. V in B) sit in the next octave.
+   */
   notes: number[]
 }
 
@@ -37,11 +40,12 @@ const MAJOR_TRIAD = [0, 4, 7]
 const MINOR_TRIAD = [0, 3, 7]
 
 /**
- * Where the keyboard diagram begins: C, or F for chords rooted on F-B, whose
- * inversions would otherwise run past the end of two octaves.
+ * Where the keyboard diagram begins: the C or F (whichever is nearer below) at or
+ * under the chord's root, so its inversions stay within two octaves.
  */
 export function keyboardStart(notes: number[]): number {
-  return notes[0]! >= 5 ? 5 : 0
+  const root = notes[0]!
+  return Math.floor(root / 12) * 12 + (root % 12 >= 5 ? 5 : 0)
 }
 
 export const INVERSION_LABELS = ['Root position', '1st inversion', '2nd inversion']
@@ -63,7 +67,7 @@ export function buildProgression(root: number): Progression {
   const chords = PROGRESSION.map(([offset, minor], i) => ({
     numeral: NUMERALS[i]!,
     name: names[(root + offset) % 12]! + (minor ? 'm' : ''),
-    notes: (minor ? MINOR_TRIAD : MAJOR_TRIAD).map((interval) => ((root + offset) % 12) + interval),
+    notes: (minor ? MINOR_TRIAD : MAJOR_TRIAD).map((interval) => root + offset + interval),
   }))
   return { root, chords }
 }
