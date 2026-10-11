@@ -422,4 +422,20 @@ footer {
   gap: 0.75rem 1.5rem;
   font-size: 0.9rem;
 }
+
+@media (max-width: 40rem) {
+  .chords {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Two columns leave ~145px per card; tighten the card and let the stepper label track shrink so the arrows stay inside. */
+  .chord {
+    padding: 0.5rem;
+  }
+
+  .steppers {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 0.25rem;
+  }
+}
 </style>

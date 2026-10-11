@@ -46,3 +46,7 @@ label {
   gap: 0.4rem;
   cursor: pointer;
 }
+
+html {
+  touch-action: pan-x pan-y;
+}

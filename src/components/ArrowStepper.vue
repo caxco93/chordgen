@@ -109,4 +109,15 @@ defineEmits<{ step: [direction: -1 | 1] }>()
   color: var(--muted);
   opacity: var(--subtle-dim);
 }
+
+@media (max-width: 40rem) {
+  .arrow,
+  .stepper.subtle .arrow {
+    padding: 0.4rem;
+  }
+
+  .label {
+    font-size: 0.75rem;
+  }
+}
 </style>
