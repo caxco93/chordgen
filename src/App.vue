@@ -25,6 +25,10 @@ const CHORD_COUNT = 4
 // Each chord's diagram, inversion and octave are set independently.
 const inversions = ref<number[]>(Array(CHORD_COUNT).fill(0))
 const octaves = ref<number[]>(Array(CHORD_COUNT).fill(DEFAULT_OCTAVE))
+// The key each chord was picked from. They all match while the progression is locked.
+const chordRoots = ref<number[]>(Array(CHORD_COUNT).fill(progression.value.root))
+// While locked, picking a chord moves the whole progression to that chord's key.
+const locked = ref(true)
 
 // The full piano: A0 to C8.
 const PIANO_LOW = 21
@@ -96,6 +100,16 @@ function shiftOctave(index: number, step: number) {
   showPreview(index)
 }
 
+/** Moves every chord one octave up or down together, unless any of them would leave the piano. */
+function shiftAllOctaves(step: number) {
+  if (!canShiftAllOctaves(step)) return
+  octaves.value = octaves.value.map((octave) => octave + step)
+}
+
+function canShiftAllOctaves(step: number): boolean {
+  return octaves.value.every((octave, i) => fits(i, octave + step, inversions.value[i]!))
+}
+
 function togglePlayback() {
   clearPreview()
   toggle()
@@ -106,6 +120,7 @@ function setProgression(next: Progression) {
   clearPreview()
   inversions.value.fill(0)
   octaves.value.fill(DEFAULT_OCTAVE)
+  chordRoots.value.fill(next.root)
   progression.value = next
 }
 
@@ -113,13 +128,46 @@ function reroll() {
   setProgression(rerollProgression(progression.value.root, keyGroups.value))
 }
 
-function selectKey(root: number) {
-  if (root !== progression.value.root) setProgression(buildProgression(root))
+function selectChord(index: number, root: number) {
+  if (locked.value) {
+    if (chordRoots.value.some((r) => r !== root)) setProgression(buildProgression(root))
+    return
+  }
+  if (root === chordRoots.value[index]) return
+  stop()
+  clearPreview()
+  chordRoots.value[index] = root
+  inversions.value[index] = 0
+  if (!fits(index, octaves.value[index]!, 0)) octaves.value[index] = DEFAULT_OCTAVE
+  progression.value = {
+    ...progression.value,
+    chords: progression.value.chords.map((chord, i) =>
+      i === index ? buildProgression(root).chords[index]! : chord,
+    ),
+  }
 }
 </script>
 
 <template>
   <main>
+    <header class="toolbar">
+      <button
+        type="button"
+        class="lock"
+        :aria-pressed="locked"
+        :title="locked ? 'Choosing a chord changes the others to match' : 'Chords can be chosen independently'"
+        @click="locked = !locked"
+      >
+        {{ locked ? '🔒' : '🔓' }} I-V-vi-IV
+      </button>
+      <ArrowStepper
+        what="octave"
+        label="Octave"
+        :can-previous="canShiftAllOctaves(-1)"
+        :can-next="canShiftAllOctaves(1)"
+        @step="shiftAllOctaves"
+      />
+    </header>
     <ul class="chords">
       <li
         v-for="(chord, i) in progression.chords"
@@ -132,8 +180,8 @@ function selectKey(root: number) {
           <ChordSelect
             :name="chord.name"
             :options="chordOptions(i)"
-            :selected="progression.root"
-            @select="selectKey"
+            :selected="chordRoots[i]!"
+            @select="selectChord(i, $event)"
           />
           <span class="numeral">{{ chord.numeral }}</span>
         </div>
@@ -294,6 +342,20 @@ main {
 .numeral {
   font-size: 1.5rem;
   color: var(--muted);
+}
+
+.toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+}
+
+.lock[aria-pressed='true'] {
+  border-color: var(--accent);
 }
 
 footer {
