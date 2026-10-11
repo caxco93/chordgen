@@ -52,6 +52,7 @@ const locked = ref(true)
 
 const DIAGRAM_SEMITONES = 24
 const PREVIEW_MS = 2000
+const SEQUENCE_STEP_MS = 250
 
 const voicings = computed(() =>
   progression.value.chords.map((chord, i) =>
@@ -88,6 +89,7 @@ useMidiInput(keys, midi)
 const previewNotes = ref<number[]>([])
 const previewId = ref(0)
 let previewTimer: ReturnType<typeof setTimeout> | undefined
+let sequenceTimers: ReturnType<typeof setTimeout>[] = []
 
 function showPreview(index: number) {
   showNotes(voicings.value[index]!)
@@ -100,7 +102,17 @@ function showNotes(notes: number[]) {
   previewTimer = setTimeout(() => (previewNotes.value = []), PREVIEW_MS)
 }
 
+/** Previews every chord one after the other, left to right. */
+function showSequence() {
+  clearPreview()
+  voicings.value.forEach((notes, i) => {
+    sequenceTimers.push(setTimeout(() => showNotes(notes), i * SEQUENCE_STEP_MS))
+  })
+}
+
 function clearPreview() {
+  sequenceTimers.forEach(clearTimeout)
+  sequenceTimers = []
   clearTimeout(previewTimer)
   previewNotes.value = []
 }
@@ -146,7 +158,7 @@ function optimizeInversionsFrom(index: number) {
   const result = optimizeInversions(allNotes, index, anchor)
   inversions.value = result.inversions
   octaves.value = result.octaves
-  showPreview(index)
+  showSequence()
 }
 
 function togglePlayback() {
@@ -261,7 +273,7 @@ function selectChord(index: number, root: number) {
               @step="shiftOctave(i, $event)"
             />
           </div>
-          <button type="button" class="optimize" @click="optimizeInversionsFrom(i)">Optimize</button>
+          <button type="button" class="optimize" @click="optimizeInversionsFrom(i)">Closest Inversions</button>
         </div>
       </li>
     </ul>
