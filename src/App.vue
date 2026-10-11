@@ -141,6 +141,7 @@ function setProgression(next: Progression) {
 
 function reroll() {
   setProgression(rerollProgression(progression.value.root, keyGroups.value, steps.value))
+  showNotes(voicings.value.flat())
 }
 
 function selectProgression(text: string) {
