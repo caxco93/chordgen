@@ -11,7 +11,7 @@ A chord progression generator with piano diagrams, inversions, octaves and playb
 - **Lock**: when locked, changing one chord's root moves the whole progression with it. Unlock to choose chords independently.
 - **Piano diagrams**: each chord shows its voicing on a keyboard.
 - **Inversions and octaves**: step each chord through its inversions and octaves, or shift every octave at once.
-- **Optimize inversions**: pick inversions that keep the voice leading smooth between neighbouring chords.
+- **Closest inversions**: pick inversions that keep the voice leading smooth between neighbouring chords.
 - **Full piano preview**: the chord you hover or adjust lights up across all 88 keys.
 - **Playback**: play the progression with sound, loop it, set the tempo (BPM) and pick an instrument (Piano or Synth I).
 
