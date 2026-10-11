@@ -67,7 +67,7 @@ function submitCustom() {
         <input
           v-model="custom"
           type="text"
-          placeholder="Custom, e.g. ii V I"
+          placeholder="Custom, e.g. ii V I or ii-V-I"
           aria-label="Custom progression in relative numerals"
           :aria-invalid="customInvalid"
           :title="`Up to ${MAX_CHORDS} numerals. Upper case is major, lower case minor; b or # lowers or raises a degree.`"
