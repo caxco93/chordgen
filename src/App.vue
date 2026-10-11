@@ -7,6 +7,7 @@ import PianoKeyboard from './components/PianoKeyboard.vue'
 import ProgressionControl from './components/ProgressionControl.vue'
 import { INSTRUMENTS } from './audio'
 import { useMidiInput } from './useMidiInput'
+import { usePressedKeys } from './usePressedKeys'
 import { usePlayback } from './usePlayback'
 import {
   DEFAULT_KEY_GROUPS,
@@ -75,8 +76,13 @@ function inversionTarget(index: number, step: number): { inversion: number; octa
 const { bpm, loop, sound, instrument, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM } =
   usePlayback(voicings)
 
+// Mouse clicks have no velocity, so they play at a fixed, moderately loud one.
+const CLICK_VELOCITY = 0.8
+
 const midi = ref(false)
-const { pressed } = useMidiInput(instrument, midi)
+const keys = usePressedKeys(instrument)
+const { pressed } = keys
+useMidiInput(keys, midi)
 
 // A brief, fading look at a chord on the full piano. Each trigger restarts it.
 const previewNotes = ref<number[]>([])
@@ -294,6 +300,9 @@ function selectChord(index: number, root: number) {
       :fade-ms="currentIndex === null ? PREVIEW_MS : undefined"
       :fade-key="previewId"
       :pressed="pressed"
+      playable
+      @press="keys.press($event, CLICK_VELOCITY)"
+      @release="keys.release"
     />
   </main>
 </template>
