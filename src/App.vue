@@ -75,7 +75,8 @@ function inversionTarget(index: number, step: number): { inversion: number; octa
 const { bpm, loop, sound, instrument, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM } =
   usePlayback(voicings)
 
-const { pressed } = useMidiInput(instrument)
+const midi = ref(false)
+const { pressed } = useMidiInput(instrument, midi)
 
 // A brief, fading look at a chord on the full piano. Each trigger restarts it.
 const previewNotes = ref<number[]>([])
@@ -279,6 +280,10 @@ function selectChord(index: number, root: number) {
           <option v-for="option in INSTRUMENTS" :key="option.id" :value="option.id">{{ option.label }}</option>
         </select>
         Instrument
+      </label>
+      <label>
+        <input v-model="midi" type="checkbox" />
+        MIDI Instrument
       </label>
     </footer>
     <PianoKeyboard
