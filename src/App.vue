@@ -110,20 +110,23 @@ function reroll() {
             :low="octaveBase(octaves[i]!) + keyboardStart(chord.notes)"
             :high="octaveBase(octaves[i]!) + keyboardStart(chord.notes) + DIAGRAM_SEMITONES - 1"
           />
-          <ArrowStepper
-            what="inversion"
-            :label="INVERSION_LABELS[inversions[i]!]!"
-            :can-previous="inversions[i] !== 0 || octaves[i]! > MIN_OCTAVE"
-            :can-next="inversions[i] !== INVERSION_LABELS.length - 1 || octaves[i]! < MAX_OCTAVE"
-            @step="shiftInversion(i, $event)"
-          />
-          <ArrowStepper
-            what="octave"
-            :label="`Octave ${octaves[i]}`"
-            :can-previous="octaves[i] !== MIN_OCTAVE"
-            :can-next="octaves[i] !== MAX_OCTAVE"
-            @step="shiftOctave(i, $event)"
-          />
+          <div class="steppers">
+            <ArrowStepper
+              what="inversion"
+              :label="INVERSION_LABELS[inversions[i]!]!"
+              :can-previous="inversions[i] !== 0 || octaves[i]! > MIN_OCTAVE"
+              :can-next="inversions[i] !== INVERSION_LABELS.length - 1 || octaves[i]! < MAX_OCTAVE"
+              @step="shiftInversion(i, $event)"
+            />
+            <ArrowStepper
+              what="octave"
+              :label="`Octave ${octaves[i]}`"
+              :can-previous="octaves[i] !== MIN_OCTAVE"
+              :can-next="octaves[i] !== MAX_OCTAVE"
+              subtle
+              @step="shiftOctave(i, $event)"
+            />
+          </div>
         </div>
       </li>
     </ul>
@@ -222,6 +225,19 @@ main {
 
 .detail-piano {
   min-height: 0;
+}
+
+/*
+ * Grid columns (previous arrow / label / next arrow) are sized across both rows at once,
+ * so the Inversion and Octave arrows land in the same column.
+ */
+.steppers {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.35rem;
+  width: 100%;
 }
 
 .full-piano {
