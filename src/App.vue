@@ -16,6 +16,7 @@ import {
   KEY_GROUPS,
   PIANO_HIGH,
   PIANO_LOW,
+  PRESETS,
   buildProgression,
   chordOptions,
   fitsPiano,
@@ -195,7 +196,8 @@ function reroll() {
 function selectProgression(text: string) {
   const next = parseNumerals(text)
   if (!next) return
-  track('select-progression', { numerals: text.trim() })
+  const normalized = next.map((step) => step.numeral).join('-')
+  track('select-progression', { numerals: normalized, custom: !PRESETS.includes(normalized) })
   steps.value = next
   setProgression(buildProgression(progression.value.root, next))
 }
