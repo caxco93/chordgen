@@ -1,20 +1,29 @@
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { noteOff, noteOn } from './audio'
 
 const NOTE_OFF = 0x80
 const NOTE_ON = 0x90
 const MAX_VELOCITY = 127
 
-/** Plays notes from any connected MIDI input device, scaled by key velocity. */
+/**
+ * Plays notes from any connected MIDI input device, scaled by key velocity.
+ * `pressed` holds the MIDI notes currently held down.
+ */
 export function useMidiInput() {
+  const pressed = ref<number[]>([])
   let access: MIDIAccess | undefined
 
   function handleMessage(event: MIDIMessageEvent) {
     const [status = 0, note = 0, velocity = 0] = event.data ?? []
     const type = status & 0xf0
     // A note-on with velocity 0 is the running-status way of sending note-off.
-    if (type === NOTE_ON && velocity > 0) noteOn(note, velocity / MAX_VELOCITY)
-    else if (type === NOTE_OFF || type === NOTE_ON) noteOff(note)
+    if (type === NOTE_ON && velocity > 0) {
+      noteOn(note, velocity / MAX_VELOCITY)
+      if (!pressed.value.includes(note)) pressed.value = [...pressed.value, note]
+    } else if (type === NOTE_OFF || type === NOTE_ON) {
+      noteOff(note)
+      pressed.value = pressed.value.filter((n) => n !== note)
+    }
   }
 
   function listen() {
@@ -38,4 +47,6 @@ export function useMidiInput() {
     access.onstatechange = null
     for (const input of access.inputs.values()) input.onmidimessage = null
   })
+
+  return { pressed }
 }

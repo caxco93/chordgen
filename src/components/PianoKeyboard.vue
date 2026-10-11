@@ -12,6 +12,8 @@ const props = defineProps<{
   fadeMs?: number
   /** Changing this restarts the fade. */
   fadeKey?: number
+  /** MIDI notes to paint as held-down keys. */
+  pressed?: number[]
 }>()
 
 const WHITE_PITCH_CLASSES = new Set([0, 2, 4, 5, 7, 9, 11])
@@ -58,6 +60,7 @@ const dots = computed(() =>
       v-for="key in whiteKeys"
       :key="key.midi"
       class="white"
+      :class="{ pressed: pressed?.includes(key.midi) }"
       :x="key.x - 0.5"
       y="0"
       width="1"
@@ -67,6 +70,7 @@ const dots = computed(() =>
       v-for="key in blackKeys"
       :key="key.midi"
       class="black"
+      :class="{ pressed: pressed?.includes(key.midi) }"
       :x="key.x - BLACK_WIDTH / 2"
       y="0"
       :width="BLACK_WIDTH"
@@ -95,6 +99,11 @@ const dots = computed(() =>
 
 .black {
   fill: #222;
+}
+
+.white.pressed,
+.black.pressed {
+  fill: #e5322d;
 }
 
 .dot {
