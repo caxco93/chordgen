@@ -94,7 +94,6 @@ function submitCustom() {
 
 .lock {
   border-radius: 0.5rem 0 0 0.5rem !important;
-  border-right-width: 0;
 }
 
 .lock svg {
@@ -126,6 +125,18 @@ function submitCustom() {
 
 .current {
   border-radius: 0 0.5rem 0.5rem 0 !important;
+  /* Overlap the lock's right border so the two share one edge. */
+  margin-left: -1px;
+}
+
+/* Lift the hovered button so its full border, including the shared edge, draws on top. */
+.group button {
+  position: relative;
+}
+
+.group button:hover,
+.group button:focus-visible {
+  z-index: 1;
 }
 
 .popup {
