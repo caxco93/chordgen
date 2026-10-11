@@ -1,50 +1,68 @@
 /**
- * A piano-like synth built directly on the Web Audio API.
+ * Two synths built directly on the Web Audio API, selectable per chord.
  *
- * Each note is additive: a handful of sine partials whose frequencies are
- * slightly stretched above the exact harmonic series (as on a real struck
- * string), each played as a gently detuned unison pair for a touch of
- * chorus. Upper partials are quieter and decay faster than the fundamental,
- * and a lowpass filter whose cutoff falls over the life of the note dulls
- * the tone further as it rings out. A short burst of filtered noise at
- * onset stands in for the hammer strike, and everything passes through a
- * shared compressor so full chords don't clip.
+ * 'piano' is additive: each note is a handful of sine partials whose
+ * frequencies are slightly stretched above the exact harmonic series (as on
+ * a real struck string), each played as a gently detuned unison pair for a
+ * touch of chorus. Upper partials are quieter and decay faster than the
+ * fundamental, and a lowpass filter whose cutoff falls over the life of the
+ * note dulls the tone further as it rings out. A short burst of filtered
+ * noise at onset stands in for the hammer strike.
+ *
+ * 'block' is the simpler synth this one replaced: every note in the chord is
+ * a plain triangle oscillator under one shared envelope.
+ *
+ * Both share a master bus through a compressor so full chords don't clip.
  */
+
+export type Instrument = 'piano' | 'block'
+
+export const INSTRUMENTS: { id: Instrument; label: string }[] = [
+  { id: 'piano', label: 'Piano' },
+  { id: 'block', label: 'Block chord' },
+]
 
 let context: AudioContext | null = null
 let masterGain: GainNode | null = null
 let noiseBuffer: AudioBuffer | null = null
 
-/** A currently-sounding note, kept around so `stopAll` can release it early. */
+/** A currently-sounding voice, kept around so `stopAll` can release it early. */
 interface Voice {
-  noteGain: GainNode
+  gain: GainNode
 }
 
 let sounding: Voice[] = []
 
-// Overall note envelope: fast attack, exponential decay while held, release on note-off.
-const NOTE_GAIN = 0.16
-const ATTACK_SECONDS = 0.005
-const SUSTAIN_LEVEL = 0.35 // fraction of NOTE_GAIN the note decays to before release
-const RELEASE_SECONDS = 0.08
+// Shared release used when `stopAll` cuts a voice off early, regardless of instrument.
+const STOP_RELEASE_SECONDS = 0.08
 
-// Harmonic structure: a handful of partials, slightly inharmonic like a real string.
+// Piano: overall note envelope. Fast attack, exponential decay while held, release on note-off.
+const PIANO_NOTE_GAIN = 0.16
+const PIANO_ATTACK_SECONDS = 0.005
+const PIANO_SUSTAIN_LEVEL = 0.35 // fraction of PIANO_NOTE_GAIN the note decays to before release
+
+// Piano: harmonic structure. A handful of partials, slightly inharmonic like a real string.
 const PARTIAL_COUNT = 6
 const INHARMONICITY = 0.0003
 const PARTIAL_DECAY_SECONDS = 0.9 // fundamental's decay time constant; partial n decays this / n
 
-// Gentle detuned unison pair per partial, for a touch of chorus.
+// Piano: gentle detuned unison pair per partial, for a touch of chorus.
 const UNISON_DETUNE_CENTS = 4
 
-// Brightness: a lowpass filter that closes over the course of the note.
+// Piano: brightness. A lowpass filter that closes over the course of the note.
 const FILTER_START_HZ = 7000
 const FILTER_END_HZ = 1100
 const FILTER_DECAY_SECONDS = 1.2
 
-// Hammer-strike transient: a short burst of filtered noise at note onset.
+// Piano: hammer-strike transient. A short burst of filtered noise at note onset.
 const HAMMER_DURATION_SECONDS = 0.02
 const HAMMER_GAIN = 0.4
 const HAMMER_HIGHPASS_HZ = 800
+
+// Block chord: the whole chord shares one envelope.
+const BLOCK_NOTE_GAIN = 0.12
+const BLOCK_ATTACK_SECONDS = 0.02
+const BLOCK_RELEASE_SECONDS = 0.05
 
 function midiToFrequency(midi: number): number {
   return 440 * 2 ** ((midi - 69) / 12)
@@ -63,7 +81,7 @@ function getAudioGraph(): { context: AudioContext; masterGain: GainNode } {
   return { context, masterGain: masterGain! }
 }
 
-/** A short burst of white noise, generated once and reused for every note's hammer transient. */
+/** A short burst of white noise, generated once and reused for every piano note's hammer transient. */
 function getNoiseBuffer(ctx: AudioContext): AudioBuffer {
   if (!noiseBuffer) {
     const length = Math.ceil(ctx.sampleRate * HAMMER_DURATION_SECONDS)
@@ -74,21 +92,31 @@ function getNoiseBuffer(ctx: AudioContext): AudioBuffer {
   return noiseBuffer
 }
 
+/** Registers a voice and arranges for it to disconnect its own nodes once `lastNode` finishes playing. */
+function trackVoice(gain: GainNode, nodes: AudioNode[], lastNode: OscillatorNode | AudioBufferSourceNode) {
+  const voice: Voice = { gain }
+  sounding.push(voice)
+  lastNode.onended = () => {
+    for (const node of nodes) node.disconnect()
+    const index = sounding.indexOf(voice)
+    if (index !== -1) sounding.splice(index, 1)
+  }
+}
+
 /**
- * Plays a single note: a stack of detuned, slightly inharmonic partials plus a
- * hammer-noise transient, shaped by a per-note envelope and a brightness
- * filter that closes over time. Registers itself in `sounding` and cleans up
- * its own nodes once the note finishes.
+ * Plays a single piano note: a stack of detuned, slightly inharmonic partials plus a
+ * hammer-noise transient, shaped by a per-note envelope and a brightness filter that
+ * closes over time.
  */
-function playNote(ctx: AudioContext, destination: AudioNode, midi: number, now: number, seconds: number) {
+function playPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, now: number, seconds: number) {
   const frequency = midiToFrequency(midi)
-  const attackEnd = now + ATTACK_SECONDS
-  const releaseStart = Math.max(attackEnd, now + seconds - RELEASE_SECONDS)
+  const attackEnd = now + PIANO_ATTACK_SECONDS
+  const releaseStart = Math.max(attackEnd, now + seconds - STOP_RELEASE_SECONDS)
 
   const noteGain = ctx.createGain()
   noteGain.gain.setValueAtTime(0, now)
-  noteGain.gain.linearRampToValueAtTime(NOTE_GAIN, attackEnd) // fast hammer-strike attack
-  noteGain.gain.exponentialRampToValueAtTime(NOTE_GAIN * SUSTAIN_LEVEL, releaseStart) // decay while the string rings
+  noteGain.gain.linearRampToValueAtTime(PIANO_NOTE_GAIN, attackEnd) // fast hammer-strike attack
+  noteGain.gain.exponentialRampToValueAtTime(PIANO_NOTE_GAIN * PIANO_SUSTAIN_LEVEL, releaseStart) // decay while the string rings
   noteGain.gain.linearRampToValueAtTime(0, now + seconds) // release when the note ends
   noteGain.connect(destination)
 
@@ -139,23 +167,43 @@ function playNote(ctx: AudioContext, destination: AudioNode, midi: number, now: 
   noise.start(now)
   nodes.push(noise, noiseFilter, hammerGain)
 
-  const voice: Voice = { noteGain }
-  sounding.push(voice)
-
   // The oscillators all stop together, last, so their 'ended' event marks the note as finished.
-  lastOscillator!.onended = () => {
-    for (const node of nodes) node.disconnect()
-    const index = sounding.indexOf(voice)
-    if (index !== -1) sounding.splice(index, 1)
-  }
+  trackVoice(noteGain, nodes, lastOscillator!)
 }
 
-/** Plays the MIDI notes together as a block chord for the given duration. */
-export function playChord(midiNotes: number[], seconds: number) {
+/** Plays every note of the chord as a plain triangle oscillator under one shared envelope. */
+function playBlockChord(ctx: AudioContext, destination: AudioNode, midiNotes: number[], now: number, seconds: number) {
+  const output = ctx.createGain()
+  output.gain.setValueAtTime(0, now)
+  output.gain.linearRampToValueAtTime(BLOCK_NOTE_GAIN, now + BLOCK_ATTACK_SECONDS)
+  output.gain.setValueAtTime(BLOCK_NOTE_GAIN, now + seconds - BLOCK_RELEASE_SECONDS)
+  output.gain.linearRampToValueAtTime(0, now + seconds)
+  output.connect(destination)
+
+  const nodes: AudioNode[] = [output]
+  let lastOscillator: OscillatorNode | null = null
+  for (const midi of midiNotes) {
+    const oscillator = ctx.createOscillator()
+    oscillator.type = 'triangle'
+    oscillator.frequency.value = midiToFrequency(midi)
+    oscillator.connect(output)
+    oscillator.start(now)
+    oscillator.stop(now + seconds)
+    nodes.push(oscillator)
+    lastOscillator = oscillator
+  }
+
+  trackVoice(output, nodes, lastOscillator!)
+}
+
+/** Plays the MIDI notes together as a chord for the given duration, on the given instrument. */
+export function playChord(midiNotes: number[], seconds: number, instrument: Instrument = 'piano') {
   const { context: ctx, masterGain: destination } = getAudioGraph()
   const now = ctx.currentTime
-  for (const midi of midiNotes) {
-    playNote(ctx, destination, midi, now, seconds)
+  if (instrument === 'block') {
+    playBlockChord(ctx, destination, midiNotes, now, seconds)
+  } else {
+    for (const midi of midiNotes) playPianoNote(ctx, destination, midi, now, seconds)
   }
 }
 
@@ -164,9 +212,9 @@ export function stopAll() {
   if (!context) return
   const now = context.currentTime
   for (const voice of sounding) {
-    voice.noteGain.gain.cancelScheduledValues(now)
-    voice.noteGain.gain.setValueAtTime(voice.noteGain.gain.value, now)
-    voice.noteGain.gain.linearRampToValueAtTime(0, now + RELEASE_SECONDS)
+    voice.gain.gain.cancelScheduledValues(now)
+    voice.gain.gain.setValueAtTime(voice.gain.gain.value, now)
+    voice.gain.gain.linearRampToValueAtTime(0, now + STOP_RELEASE_SECONDS)
   }
   sounding = []
 }
