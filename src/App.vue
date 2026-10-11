@@ -21,6 +21,7 @@ import {
   fitsPiano,
   invert,
   keyboardStart,
+  noteName,
   octaveBase,
   parseNumerals,
   type Progression,
@@ -153,10 +154,15 @@ function canShiftAllOctaves(step: number): boolean {
  * possible. See `optimizeInversions` for the exact ordering of those two criteria.
  */
 function optimizeInversionsFrom(index: number) {
-  track('closest-inversions')
   stop()
   const allNotes = progression.value.chords.map((chord) => chord.notes)
   const anchor = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
+  track('closest-inversions', {
+    key: noteName(chordRoots.value[index]!, chordRoots.value[index]!),
+    chord: progression.value.chords[index]!.name,
+    octave: anchor.octave,
+    inversion: anchor.inversion,
+  })
   const result = optimizeInversions(allNotes, index, anchor)
   inversions.value = result.inversions
   octaves.value = result.octaves

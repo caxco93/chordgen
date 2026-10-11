@@ -118,11 +118,15 @@ export interface Progression {
   chords: Chord[]
 }
 
+/** The note name of a pitch class (0-11) in the spelling used by the progression key `root`. */
+export function noteName(pitchClass: number, root: number): string {
+  return (FLAT_KEYS.has(root) ? FLAT_NAMES : SHARP_NAMES)[pitchClass % 12]!
+}
+
 export function buildProgression(root: number, steps: Step[]): Progression {
-  const names = FLAT_KEYS.has(root) ? FLAT_NAMES : SHARP_NAMES
   const chords = steps.map(({ numeral, offset, minor }) => ({
     numeral,
-    name: names[(root + offset) % 12]! + (minor ? 'm' : ''),
+    name: noteName(root + offset, root) + (minor ? 'm' : ''),
     notes: (minor ? MINOR_TRIAD : MAJOR_TRIAD).map((interval) => root + offset + interval),
   }))
   return { root, chords }
