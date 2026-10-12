@@ -1,15 +1,15 @@
 <script setup lang="ts">
 defineProps<{
-  label: string
+  label: string;
   /** Accessible name of the thing being stepped, e.g. "inversion". */
-  what: string
-  canPrevious: boolean
-  canNext: boolean
+  what: string;
+  canPrevious: boolean;
+  canNext: boolean;
   /** De-emphasizes the stepper: bare arrow glyphs, lower contrast. Used for the Octave stepper. */
-  subtle?: boolean
-}>()
+  subtle?: boolean;
+}>();
 
-defineEmits<{ step: [direction: -1 | 1] }>()
+defineEmits<{ step: [direction: -1 | 1] }>();
 </script>
 
 <template>

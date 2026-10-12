@@ -1,35 +1,50 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { ChordOption } from '../chords'
-import { useDismiss } from './useDismiss'
+import { ref } from 'vue';
+import type { ChordOption } from '../chords';
+import { useDismiss } from './useDismiss';
 
 defineProps<{
-  name: string
-  options: ChordOption[]
+  name: string;
+  options: ChordOption[];
   /** The progression key currently selected. */
-  selected: number
-}>()
+  selected: number;
+}>();
 
-const emit = defineEmits<{ select: [root: number] }>()
+const emit = defineEmits<{ select: [root: number] }>();
 
-const open = ref(false)
-const root = ref<HTMLElement | null>(null)
-useDismiss(root, () => (open.value = false))
+const open = ref(false);
+const root = ref<HTMLElement | null>(null);
+useDismiss(root, () => (open.value = false));
 
 function choose(option: ChordOption) {
-  open.value = false
-  emit('select', option.root)
+  open.value = false;
+  emit('select', option.root);
 }
 </script>
 
 <template>
   <div ref="root" class="chord-select">
-    <button type="button" class="name" aria-haspopup="listbox" :aria-expanded="open" @click="open = !open">
+    <button
+      type="button"
+      class="name"
+      aria-haspopup="listbox"
+      :aria-expanded="open"
+      @click="open = !open"
+    >
       {{ name }}
     </button>
     <ul v-if="open" class="options" role="listbox">
-      <li v-for="option in options" :key="option.root" role="option" :aria-selected="option.root === selected">
-        <button type="button" :class="{ selected: option.root === selected }" @click="choose(option)">
+      <li
+        v-for="option in options"
+        :key="option.root"
+        role="option"
+        :aria-selected="option.root === selected"
+      >
+        <button
+          type="button"
+          :class="{ selected: option.root === selected }"
+          @click="choose(option)"
+        >
           {{ option.name }}
         </button>
       </li>

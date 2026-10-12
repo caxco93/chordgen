@@ -1,42 +1,44 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { MAX_CHORDS, PRESETS, parseNumerals } from '../chords'
-import { track } from '../analytics'
-import { useDismiss } from './useDismiss'
+import { computed, ref } from 'vue';
+import { track } from '../analytics';
+import { MAX_CHORDS, PRESETS, parseNumerals } from '../chords';
+import { useDismiss } from './useDismiss';
 
 defineProps<{
   /** The current progression in relative numerals, e.g. "I-V-vi-IV", or null if the chords were picked individually. */
-  current: string | null
-}>()
+  current: string | null;
+}>();
 
 const emit = defineEmits<{
   /** `custom` is true when the numerals were typed in rather than picked from the presets. */
-  select: [numerals: string, custom: boolean]
-}>()
+  select: [numerals: string, custom: boolean];
+}>();
 
 /** Whether choosing a chord changes the whole progression to match. */
-const locked = defineModel<boolean>('locked', { required: true })
+const locked = defineModel<boolean>('locked', { required: true });
 
-const open = ref(false)
-const root = ref<HTMLElement | null>(null)
-useDismiss(root, () => (open.value = false))
+const open = ref(false);
+const root = ref<HTMLElement | null>(null);
+useDismiss(root, () => (open.value = false));
 
-const custom = ref('')
-const customInvalid = computed(() => custom.value.trim() !== '' && !parseNumerals(custom.value))
+const custom = ref('');
+const customInvalid = computed(() => custom.value.trim() !== '' && !parseNumerals(custom.value));
 
 function choose(numerals: string, isCustom: boolean) {
-  open.value = false
-  emit('select', numerals, isCustom)
+  open.value = false;
+  emit('select', numerals, isCustom);
 }
 
 function toggleLock() {
-  locked.value = !locked.value
-  track('toggle-lock', { locked: locked.value })
+  locked.value = !locked.value;
+  track('toggle-lock', { locked: locked.value });
 }
 
 function submitCustom() {
-  if (custom.value.trim() === '' || customInvalid.value) return
-  choose(custom.value, true)
+  if (custom.value.trim() === '' || customInvalid.value) {
+    return;
+  }
+  choose(custom.value, true);
 }
 </script>
 
@@ -60,14 +62,29 @@ function submitCustom() {
           <rect class="body" x="8" y="11" width="16" height="11" rx="2" />
         </svg>
       </button>
-      <button type="button" class="current" aria-haspopup="listbox" :aria-expanded="open" @click="open = !open">
+      <button
+        type="button"
+        class="current"
+        aria-haspopup="listbox"
+        :aria-expanded="open"
+        @click="open = !open"
+      >
         {{ current ?? 'Mixed' }} ▾
       </button>
     </div>
     <div v-if="open" class="popup">
       <ul class="presets" role="listbox">
-        <li v-for="numerals in PRESETS" :key="numerals" role="option" :aria-selected="numerals === current">
-          <button type="button" :class="{ selected: numerals === current }" @click="choose(numerals, false)">
+        <li
+          v-for="numerals in PRESETS"
+          :key="numerals"
+          role="option"
+          :aria-selected="numerals === current"
+        >
+          <button
+            type="button"
+            :class="{ selected: numerals === current }"
+            @click="choose(numerals, false)"
+          >
             {{ numerals }}
           </button>
         </li>
@@ -80,7 +97,7 @@ function submitCustom() {
           aria-label="Custom progression in relative numerals"
           :aria-invalid="customInvalid"
           :title="`Up to ${MAX_CHORDS} numerals. Upper case is major, lower case minor; b or # lowers or raises a degree.`"
-        />
+        >
         <button type="submit" :disabled="custom.trim() === '' || customInvalid">Use</button>
       </form>
     </div>
@@ -127,7 +144,7 @@ function submitCustom() {
   transform: scaleX(-1);
 }
 
-.lock[aria-pressed='true'] {
+.lock[aria-pressed="true"] {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 45%, black);
 }
@@ -205,7 +222,7 @@ function submitCustom() {
   border-radius: 0.5rem;
 }
 
-.custom input[aria-invalid='true'] {
+.custom input[aria-invalid="true"] {
   border-color: #d33;
 }
 
