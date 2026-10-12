@@ -1,42 +1,44 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { track } from '../analytics'
-import { MAX_CHORDS, PRESETS, parseNumerals } from '../chords'
-import { useDismiss } from './useDismiss'
+import { computed, ref } from 'vue';
+import { track } from '../analytics';
+import { MAX_CHORDS, PRESETS, parseNumerals } from '../chords';
+import { useDismiss } from './useDismiss';
 
 defineProps<{
   /** The current progression in relative numerals, e.g. "I-V-vi-IV", or null if the chords were picked individually. */
-  current: string | null
-}>()
+  current: string | null;
+}>();
 
 const emit = defineEmits<{
   /** `custom` is true when the numerals were typed in rather than picked from the presets. */
-  select: [numerals: string, custom: boolean]
-}>()
+  select: [numerals: string, custom: boolean];
+}>();
 
 /** Whether choosing a chord changes the whole progression to match. */
-const locked = defineModel<boolean>('locked', { required: true })
+const locked = defineModel<boolean>('locked', { required: true });
 
-const open = ref(false)
-const root = ref<HTMLElement | null>(null)
-useDismiss(root, () => (open.value = false))
+const open = ref(false);
+const root = ref<HTMLElement | null>(null);
+useDismiss(root, () => (open.value = false));
 
-const custom = ref('')
-const customInvalid = computed(() => custom.value.trim() !== '' && !parseNumerals(custom.value))
+const custom = ref('');
+const customInvalid = computed(() => custom.value.trim() !== '' && !parseNumerals(custom.value));
 
 function choose(numerals: string, isCustom: boolean) {
-  open.value = false
-  emit('select', numerals, isCustom)
+  open.value = false;
+  emit('select', numerals, isCustom);
 }
 
 function toggleLock() {
-  locked.value = !locked.value
-  track('toggle-lock', { locked: locked.value })
+  locked.value = !locked.value;
+  track('toggle-lock', { locked: locked.value });
 }
 
 function submitCustom() {
-  if (custom.value.trim() === '' || customInvalid.value) return
-  choose(custom.value, true)
+  if (custom.value.trim() === '' || customInvalid.value) {
+    return;
+  }
+  choose(custom.value, true);
 }
 </script>
 

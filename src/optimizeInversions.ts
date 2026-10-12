@@ -1,17 +1,17 @@
-import { fitsPiano, INVERSION_LABELS, invert, octaveBase } from './chords'
+import { fitsPiano, INVERSION_LABELS, invert, octaveBase } from './chords';
 
 export interface Voicing {
-  inversion: number
-  octave: number
+  inversion: number;
+  octave: number;
 }
 
 export interface OptimizeResult {
-  inversions: number[]
-  octaves: number[]
+  inversions: number[];
+  octaves: number[];
 }
 
 function voicingNotes(notes: number[], voicing: Voicing): number[] {
-  return invert(notes, voicing.inversion).map((note) => octaveBase(voicing.octave) + note)
+  return invert(notes, voicing.inversion).map((note) => octaveBase(voicing.octave) + note);
 }
 
 /**
@@ -22,13 +22,15 @@ function voicingNotes(notes: number[], voicing: Voicing): number[] {
  * a sane result could actually use.
  */
 function validVoicings(notes: number[], lockedOctave: number): Voicing[] {
-  const choices: Voicing[] = []
+  const choices: Voicing[] = [];
   for (let octave = lockedOctave - 1; octave <= lockedOctave + 1; octave++) {
     for (let inversion = 0; inversion < INVERSION_LABELS.length; inversion++) {
-      if (fitsPiano(notes, octave, inversion)) choices.push({ inversion, octave })
+      if (fitsPiano(notes, octave, inversion)) {
+        choices.push({ inversion, octave });
+      }
     }
   }
-  return choices
+  return choices;
 }
 
 /**
@@ -40,7 +42,7 @@ function closenessToLocked(notes: number[], lockedNotes: number[]): number {
   return lockedNotes.reduce(
     (sum, lockedNote) => sum + Math.min(...notes.map((note) => Math.abs(note - lockedNote))),
     0,
-  )
+  );
 }
 
 /**
@@ -64,50 +66,52 @@ export function optimizeInversions(
   lockedIndex: number,
   lockedVoicing: Voicing,
 ): OptimizeResult {
-  const lockedNotes = voicingNotes(allNotes[lockedIndex]!, lockedVoicing)
-  const otherIndices = allNotes.map((_, i) => i).filter((i) => i !== lockedIndex)
-  const optionsPerChord = otherIndices.map((i) => validVoicings(allNotes[i]!, lockedVoicing.octave))
+  const lockedNotes = voicingNotes(allNotes[lockedIndex]!, lockedVoicing);
+  const otherIndices = allNotes.map((_, i) => i).filter((i) => i !== lockedIndex);
+  const optionsPerChord = otherIndices.map((i) =>
+    validVoicings(allNotes[i]!, lockedVoicing.octave),
+  );
 
-  let best: Voicing[] = []
-  let bestSpan = Infinity
-  let bestCloseness = Infinity
+  let best: Voicing[] = [];
+  let bestSpan = Infinity;
+  let bestCloseness = Infinity;
 
   // Depth-first search over every combination of choices, one per other chord.
   function search(depth: number, chosen: Voicing[]) {
     if (depth === otherIndices.length) {
       const otherNotes = chosen.map((voicing, k) =>
         voicingNotes(allNotes[otherIndices[k]!]!, voicing),
-      )
-      const allVoicedNotes = [lockedNotes, ...otherNotes].flat()
-      const span = Math.max(...allVoicedNotes) - Math.min(...allVoicedNotes)
+      );
+      const allVoicedNotes = [lockedNotes, ...otherNotes].flat();
+      const span = Math.max(...allVoicedNotes) - Math.min(...allVoicedNotes);
       const closeness = otherNotes.reduce(
         (sum, notes) => sum + closenessToLocked(notes, lockedNotes),
         0,
-      )
+      );
       if (span < bestSpan || (span === bestSpan && closeness < bestCloseness)) {
-        bestSpan = span
-        bestCloseness = closeness
-        best = [...chosen]
+        bestSpan = span;
+        bestCloseness = closeness;
+        best = [...chosen];
       }
-      return
+      return;
     }
     for (const voicing of optionsPerChord[depth]!) {
-      chosen.push(voicing)
-      search(depth + 1, chosen)
-      chosen.pop()
+      chosen.push(voicing);
+      search(depth + 1, chosen);
+      chosen.pop();
     }
   }
 
-  search(0, [])
+  search(0, []);
 
-  const inversions: number[] = []
-  const octaves: number[] = []
-  inversions[lockedIndex] = lockedVoicing.inversion
-  octaves[lockedIndex] = lockedVoicing.octave
+  const inversions: number[] = [];
+  const octaves: number[] = [];
+  inversions[lockedIndex] = lockedVoicing.inversion;
+  octaves[lockedIndex] = lockedVoicing.octave;
   otherIndices.forEach((i, k) => {
-    inversions[i] = best[k]!.inversion
-    octaves[i] = best[k]!.octave
-  })
+    inversions[i] = best[k]!.inversion;
+    octaves[i] = best[k]!.octave;
+  });
 
-  return { inversions, octaves }
+  return { inversions, octaves };
 }

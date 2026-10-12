@@ -6,11 +6,11 @@
   "linter": {
     "rules": {
       "preset": "recommended",
-      "style": { "noNonNullAssertion": "off" }
+      "style": { "noNonNullAssertion": "off", "useBlockStatements": "error" }
     }
   },
   "javascript": {
-    "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" }
+    "formatter": { "quoteStyle": "single", "semicolons": "always" }
   },
   "html": {
     "experimentalFullSupportEnabled": true,

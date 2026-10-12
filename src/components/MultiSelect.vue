@@ -1,34 +1,34 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useDismiss } from './useDismiss'
+import { computed, ref } from 'vue';
+import { useDismiss } from './useDismiss';
 
 const props = defineProps<{
-  label: string
-  options: { id: string; label: string }[]
-}>()
+  label: string;
+  options: { id: string; label: string }[];
+}>();
 
 /** Ids of the selected options. At least one always stays selected. */
-const selected = defineModel<string[]>({ required: true })
+const selected = defineModel<string[]>({ required: true });
 
-const open = ref(false)
-const root = ref<HTMLElement | null>(null)
-useDismiss(root, () => (open.value = false))
+const open = ref(false);
+const root = ref<HTMLElement | null>(null);
+useDismiss(root, () => (open.value = false));
 
 function summarize(ids: string[]): string {
   return props.options
     .filter((o) => ids.includes(o.id))
     .map((o) => o.label)
-    .join(', ')
+    .join(', ');
 }
 
-const summary = computed(() => summarize(selected.value))
+const summary = computed(() => summarize(selected.value));
 // The summary with everything selected is the widest it can get.
-const widestSummary = computed(() => summarize(props.options.map((o) => o.id)))
+const widestSummary = computed(() => summarize(props.options.map((o) => o.id)));
 
 function toggle(id: string) {
   selected.value = selected.value.includes(id)
     ? selected.value.filter((s) => s !== id)
-    : [...selected.value, id]
+    : [...selected.value, id];
 }
 </script>
 

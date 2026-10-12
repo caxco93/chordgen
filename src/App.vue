@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
-import { track } from './analytics'
-import { INSTRUMENTS } from './audio'
+import { computed, onUnmounted, ref, watch } from 'vue';
+import { track } from './analytics';
+import { INSTRUMENTS } from './audio';
 import {
   buildProgression,
   chordOptions,
@@ -20,51 +20,51 @@ import {
   parseNumerals,
   rerollProgression,
   type Step,
-} from './chords'
-import ArrowStepper from './components/ArrowStepper.vue'
-import ChordSelect from './components/ChordSelect.vue'
-import MultiSelect from './components/MultiSelect.vue'
-import PianoKeyboard from './components/PianoKeyboard.vue'
-import ProgressionControl from './components/ProgressionControl.vue'
-import { optimizeInversions } from './optimizeInversions'
-import { useMidiInput } from './useMidiInput'
-import { usePlayback } from './usePlayback'
-import { usePressedKeys } from './usePressedKeys'
+} from './chords';
+import ArrowStepper from './components/ArrowStepper.vue';
+import ChordSelect from './components/ChordSelect.vue';
+import MultiSelect from './components/MultiSelect.vue';
+import PianoKeyboard from './components/PianoKeyboard.vue';
+import ProgressionControl from './components/ProgressionControl.vue';
+import { optimizeInversions } from './optimizeInversions';
+import { useMidiInput } from './useMidiInput';
+import { usePlayback } from './usePlayback';
+import { usePressedKeys } from './usePressedKeys';
 
 /** A list with `value` for each chord of the current progression. */
 function perChord(value: number): number[] {
-  return Array(steps.value.length).fill(value)
+  return Array(steps.value.length).fill(value);
 }
 
-const keyGroups = ref([...DEFAULT_KEY_GROUPS])
-const steps = ref<Step[]>(DEFAULT_STEPS)
-const progression = ref(buildProgression(0, steps.value))
+const keyGroups = ref([...DEFAULT_KEY_GROUPS]);
+const steps = ref<Step[]>(DEFAULT_STEPS);
+const progression = ref(buildProgression(0, steps.value));
 // Chords picked from different keys no longer form the progression.
-const isMixed = computed(() => chordRoots.value.some((root) => root !== chordRoots.value[0]))
-const numerals = computed(() => steps.value.map((step) => step.numeral).join('-'))
+const isMixed = computed(() => chordRoots.value.some((root) => root !== chordRoots.value[0]));
+const numerals = computed(() => steps.value.map((step) => step.numeral).join('-'));
 
-const DEFAULT_OCTAVE = 4
+const DEFAULT_OCTAVE = 4;
 // Each chord's diagram, inversion and octave are set independently.
-const inversions = ref<number[]>(perChord(0))
-const octaves = ref<number[]>(perChord(DEFAULT_OCTAVE))
+const inversions = ref<number[]>(perChord(0));
+const octaves = ref<number[]>(perChord(DEFAULT_OCTAVE));
 // The key each chord was picked from. They all match while the progression is locked.
-const chordRoots = ref<number[]>(perChord(progression.value.root))
+const chordRoots = ref<number[]>(perChord(progression.value.root));
 // While locked, picking a chord moves the whole progression to that chord's key.
-const locked = ref(true)
+const locked = ref(true);
 
-const DIAGRAM_SEMITONES = 24
-const PREVIEW_MS = 2000
-const SEQUENCE_STEP_MS = 250
+const DIAGRAM_SEMITONES = 24;
+const PREVIEW_MS = 2000;
+const SEQUENCE_STEP_MS = 250;
 
 const voicings = computed(() =>
   progression.value.chords.map((chord, i) =>
     invert(chord.notes, inversions.value[i]!).map((note) => octaveBase(octaves.value[i]!) + note),
   ),
-)
+);
 
 /** Whether the chord at `index` voiced this way stays within the piano's keys. */
 function fits(index: number, octave: number, inversion: number): boolean {
-  return fitsPiano(progression.value.chords[index]!.notes, octave, inversion)
+  return fitsPiano(progression.value.chords[index]!.notes, octave, inversion);
 }
 
 /** The inversion and octave one step up or down from the current voicing, or undefined past the piano's ends. */
@@ -72,84 +72,90 @@ function inversionTarget(
   index: number,
   step: number,
 ): { inversion: number; octave: number } | undefined {
-  const count = INVERSION_LABELS.length
-  const next = inversions.value[index]! + step
-  const inversion = (next + count) % count
-  const octave = octaves.value[index]! + Math.floor(next / count)
-  return fits(index, octave, inversion) ? { inversion, octave } : undefined
+  const count = INVERSION_LABELS.length;
+  const next = inversions.value[index]! + step;
+  const inversion = (next + count) % count;
+  const octave = octaves.value[index]! + Math.floor(next / count);
+  return fits(index, octave, inversion) ? { inversion, octave } : undefined;
 }
 
 const { bpm, loop, sound, instrument, currentIndex, isPlaying, toggle, stop, MIN_BPM, MAX_BPM } =
-  usePlayback(voicings)
+  usePlayback(voicings);
 
 // Mouse clicks have no velocity, so they play at a fixed, moderately loud one.
-const CLICK_VELOCITY = 0.8
+const CLICK_VELOCITY = 0.8;
 
-const midi = ref(false)
-const keys = usePressedKeys(instrument)
-const { pressed } = keys
-useMidiInput(keys, midi)
-watch(midi, (enabled) => track('toggle-midi', { enabled }))
+const midi = ref(false);
+const keys = usePressedKeys(instrument);
+const { pressed } = keys;
+useMidiInput(keys, midi);
+watch(midi, (enabled) => track('toggle-midi', { enabled }));
 
 // A brief, fading look at a chord on the full piano. Each trigger restarts it.
-const previewNotes = ref<number[]>([])
-const previewId = ref(0)
-let previewTimer: ReturnType<typeof setTimeout> | undefined
-let sequenceTimers: ReturnType<typeof setTimeout>[] = []
+const previewNotes = ref<number[]>([]);
+const previewId = ref(0);
+let previewTimer: ReturnType<typeof setTimeout> | undefined;
+let sequenceTimers: ReturnType<typeof setTimeout>[] = [];
 
 function showPreview(index: number) {
-  showNotes(voicings.value[index]!)
+  showNotes(voicings.value[index]!);
 }
 
 function showNotes(notes: number[]) {
-  previewNotes.value = notes
-  previewId.value++
-  clearTimeout(previewTimer)
-  previewTimer = setTimeout(() => (previewNotes.value = []), PREVIEW_MS)
+  previewNotes.value = notes;
+  previewId.value++;
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => (previewNotes.value = []), PREVIEW_MS);
 }
 
 /** Previews every chord one after the other, left to right. */
 function showSequence() {
-  clearPreview()
+  clearPreview();
   voicings.value.forEach((notes, i) => {
-    sequenceTimers.push(setTimeout(() => showNotes(notes), i * SEQUENCE_STEP_MS))
-  })
+    sequenceTimers.push(setTimeout(() => showNotes(notes), i * SEQUENCE_STEP_MS));
+  });
 }
 
 function clearPreview() {
-  sequenceTimers.forEach(clearTimeout)
-  sequenceTimers = []
-  clearTimeout(previewTimer)
-  previewNotes.value = []
+  sequenceTimers.forEach(clearTimeout);
+  sequenceTimers = [];
+  clearTimeout(previewTimer);
+  previewNotes.value = [];
 }
 
-onUnmounted(clearPreview)
+onUnmounted(clearPreview);
 
 /** Steps the voicing up or down, rolling over into the neighbouring octave past either end. */
 function shiftInversion(index: number, step: number) {
-  const target = inversionTarget(index, step)
-  if (!target) return
-  inversions.value[index] = target.inversion
-  octaves.value[index] = target.octave
-  showPreview(index)
+  const target = inversionTarget(index, step);
+  if (!target) {
+    return;
+  }
+  inversions.value[index] = target.inversion;
+  octaves.value[index] = target.octave;
+  showPreview(index);
 }
 
 function shiftOctave(index: number, step: number) {
-  const octave = octaves.value[index]! + step
-  if (!fits(index, octave, inversions.value[index]!)) return
-  octaves.value[index] = octave
-  showPreview(index)
+  const octave = octaves.value[index]! + step;
+  if (!fits(index, octave, inversions.value[index]!)) {
+    return;
+  }
+  octaves.value[index] = octave;
+  showPreview(index);
 }
 
 /** Moves every chord one octave up or down together, unless any of them would leave the piano. */
 function shiftAllOctaves(step: number) {
-  if (!canShiftAllOctaves(step)) return
-  octaves.value = octaves.value.map((octave) => octave + step)
-  showNotes(voicings.value.flat())
+  if (!canShiftAllOctaves(step)) {
+    return;
+  }
+  octaves.value = octaves.value.map((octave) => octave + step);
+  showNotes(voicings.value.flat());
 }
 
 function canShiftAllOctaves(step: number): boolean {
-  return octaves.value.every((octave, i) => fits(i, octave + step, inversions.value[i]!))
+  return octaves.value.every((octave, i) => fits(i, octave + step, inversions.value[i]!));
 }
 
 /** What the analytics events say about the progression: the name of the key `root`, its chords and its numerals (null when mixed). */
@@ -158,7 +164,7 @@ function progressionContext(root: number) {
     key: noteName(root, root),
     progression: progression.value.chords.map((chord) => chord.name).join('-'),
     numerals: isMixed.value ? null : numerals.value,
-  }
+  };
 }
 
 /**
@@ -167,30 +173,30 @@ function progressionContext(root: number) {
  * possible. See `optimizeInversions` for the exact ordering of those two criteria.
  */
 function optimizeInversionsFrom(index: number) {
-  stop()
-  const allNotes = progression.value.chords.map((chord) => chord.notes)
-  const anchor = { inversion: inversions.value[index]!, octave: octaves.value[index]! }
+  stop();
+  const allNotes = progression.value.chords.map((chord) => chord.notes);
+  const anchor = { inversion: inversions.value[index]!, octave: octaves.value[index]! };
   track('closest-inversions', {
     ...progressionContext(chordRoots.value[index]!),
     chord: progression.value.chords[index]!.name,
     octave: anchor.octave,
     inversion: anchor.inversion,
-  })
-  const result = optimizeInversions(allNotes, index, anchor)
-  inversions.value = result.inversions
-  octaves.value = result.octaves
-  showSequence()
+  });
+  const result = optimizeInversions(allNotes, index, anchor);
+  inversions.value = result.inversions;
+  octaves.value = result.octaves;
+  showSequence();
 }
 
 // When the Play/Stop button was last pressed, for the analytics events.
-let lastToggleAt: number | undefined
+let lastToggleAt: number | undefined;
 
 /** Whole seconds since the previous press of the Play/Stop button, or null on the first press. */
 function secondsSinceLastToggle(): number | null {
-  const now = performance.now()
-  const seconds = lastToggleAt === undefined ? null : Math.round((now - lastToggleAt) / 1000)
-  lastToggleAt = now
-  return seconds
+  const now = performance.now();
+  const seconds = lastToggleAt === undefined ? null : Math.round((now - lastToggleAt) / 1000);
+  lastToggleAt = now;
+  return seconds;
 }
 
 function togglePlayback() {
@@ -199,53 +205,60 @@ function togglePlayback() {
     bpm: bpm.value,
     instrument: instrument.value,
     seconds_since_last_toggle: secondsSinceLastToggle(),
-  })
-  clearPreview()
-  toggle()
+  });
+  clearPreview();
+  toggle();
 }
 
 function setProgression(next: Progression) {
-  stop()
-  clearPreview()
-  progression.value = next
-  inversions.value = perChord(0)
-  octaves.value = perChord(DEFAULT_OCTAVE)
-  chordRoots.value = perChord(next.root)
+  stop();
+  clearPreview();
+  progression.value = next;
+  inversions.value = perChord(0);
+  octaves.value = perChord(DEFAULT_OCTAVE);
+  chordRoots.value = perChord(next.root);
 }
 
 function reroll() {
-  track('reroll')
-  setProgression(rerollProgression(progression.value.root, keyGroups.value, steps.value))
-  showNotes(voicings.value.flat())
+  track('reroll');
+  setProgression(rerollProgression(progression.value.root, keyGroups.value, steps.value));
+  showNotes(voicings.value.flat());
 }
 
 function selectProgression(text: string, custom: boolean) {
-  const next = parseNumerals(text)
-  if (!next) return
-  const normalized = next.map((step) => step.numeral).join('-')
-  track('select-progression', { numerals: normalized, custom })
-  steps.value = next
-  setProgression(buildProgression(progression.value.root, next))
+  const next = parseNumerals(text);
+  if (!next) {
+    return;
+  }
+  const normalized = next.map((step) => step.numeral).join('-');
+  track('select-progression', { numerals: normalized, custom });
+  steps.value = next;
+  setProgression(buildProgression(progression.value.root, next));
 }
 
 function selectChord(index: number, root: number) {
   if (locked.value) {
-    if (chordRoots.value.some((r) => r !== root))
-      setProgression(buildProgression(root, steps.value))
-    return
+    if (chordRoots.value.some((r) => r !== root)) {
+      setProgression(buildProgression(root, steps.value));
+    }
+    return;
   }
-  if (root === chordRoots.value[index]) return
-  stop()
-  clearPreview()
-  chordRoots.value[index] = root
-  inversions.value[index] = 0
-  if (!fits(index, octaves.value[index]!, 0)) octaves.value[index] = DEFAULT_OCTAVE
+  if (root === chordRoots.value[index]) {
+    return;
+  }
+  stop();
+  clearPreview();
+  chordRoots.value[index] = root;
+  inversions.value[index] = 0;
+  if (!fits(index, octaves.value[index]!, 0)) {
+    octaves.value[index] = DEFAULT_OCTAVE;
+  }
   progression.value = {
     ...progression.value,
     chords: progression.value.chords.map((chord, i) =>
       i === index ? buildProgression(root, steps.value).chords[index]! : chord,
     ),
-  }
+  };
 }
 </script>
 

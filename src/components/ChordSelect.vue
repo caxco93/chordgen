@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { ChordOption } from '../chords'
-import { useDismiss } from './useDismiss'
+import { ref } from 'vue';
+import type { ChordOption } from '../chords';
+import { useDismiss } from './useDismiss';
 
 defineProps<{
-  name: string
-  options: ChordOption[]
+  name: string;
+  options: ChordOption[];
   /** The progression key currently selected. */
-  selected: number
-}>()
+  selected: number;
+}>();
 
-const emit = defineEmits<{ select: [root: number] }>()
+const emit = defineEmits<{ select: [root: number] }>();
 
-const open = ref(false)
-const root = ref<HTMLElement | null>(null)
-useDismiss(root, () => (open.value = false))
+const open = ref(false);
+const root = ref<HTMLElement | null>(null);
+useDismiss(root, () => (open.value = false));
 
 function choose(option: ChordOption) {
-  open.value = false
-  emit('select', option.root)
+  open.value = false;
+  emit('select', option.root);
 }
 </script>
 
