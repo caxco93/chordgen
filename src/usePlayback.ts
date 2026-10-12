@@ -1,5 +1,5 @@
-import { computed, onUnmounted, ref, watch, type Ref } from 'vue'
-import { playChord, stopAll, type Instrument } from './audio'
+import { computed, onUnmounted, type Ref, ref, watch } from 'vue'
+import { type Instrument, playChord, stopAll } from './audio'
 
 const BEATS_PER_BAR = 4
 const MIN_BPM = 30

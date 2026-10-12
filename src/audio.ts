@@ -93,7 +93,11 @@ function getNoiseBuffer(ctx: AudioContext): AudioBuffer {
 }
 
 /** Registers a voice and arranges for it to disconnect its own nodes once `lastNode` finishes playing. */
-function trackVoice(gain: GainNode, nodes: AudioNode[], lastNode: OscillatorNode | AudioBufferSourceNode) {
+function trackVoice(
+  gain: GainNode,
+  nodes: AudioNode[],
+  lastNode: OscillatorNode | AudioBufferSourceNode,
+) {
   const voice: Voice = { gain }
   sounding.push(voice)
   lastNode.onended = () => {
@@ -115,7 +119,13 @@ interface PianoNote {
  * hammer-noise transient, with a brightness filter that closes over time. The caller
  * shapes the rest of the envelope and stops the oscillators.
  */
-function startPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, now: number, velocity: number): PianoNote {
+function startPianoNote(
+  ctx: AudioContext,
+  destination: AudioNode,
+  midi: number,
+  now: number,
+  velocity: number,
+): PianoNote {
   const frequency = midiToFrequency(midi)
 
   const noteGain = ctx.createGain()
@@ -173,7 +183,13 @@ function startPianoNote(ctx: AudioContext, destination: AudioNode, midi: number,
 }
 
 /** Plays a piano note for a fixed duration. */
-function playPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, now: number, seconds: number) {
+function playPianoNote(
+  ctx: AudioContext,
+  destination: AudioNode,
+  midi: number,
+  now: number,
+  seconds: number,
+) {
   const { noteGain, oscillators, nodes } = startPianoNote(ctx, destination, midi, now, 1)
   const releaseStart = Math.max(now + PIANO_ATTACK_SECONDS, now + seconds - STOP_RELEASE_SECONDS)
   noteGain.gain.exponentialRampToValueAtTime(PIANO_NOTE_GAIN * PIANO_SUSTAIN_LEVEL, releaseStart) // decay while the string rings
@@ -185,7 +201,13 @@ function playPianoNote(ctx: AudioContext, destination: AudioNode, midi: number, 
 }
 
 /** Plays every note of the chord as a plain triangle oscillator under one shared envelope. */
-function playBlockChord(ctx: AudioContext, destination: AudioNode, midiNotes: number[], now: number, seconds: number) {
+function playBlockChord(
+  ctx: AudioContext,
+  destination: AudioNode,
+  midiNotes: number[],
+  now: number,
+  seconds: number,
+) {
   const output = ctx.createGain()
   output.gain.setValueAtTime(0, now)
   output.gain.linearRampToValueAtTime(BLOCK_NOTE_GAIN, now + BLOCK_ATTACK_SECONDS)
@@ -221,7 +243,12 @@ export function playChord(midiNotes: number[], seconds: number, instrument: Inst
 }
 
 /** Starts a note that sounds until released, returning the function that releases it. */
-type StartHeld = (ctx: AudioContext, destination: AudioNode, midi: number, velocity: number) => () => void
+type StartHeld = (
+  ctx: AudioContext,
+  destination: AudioNode,
+  midi: number,
+  velocity: number,
+) => () => void
 
 const startHeldPiano: StartHeld = (ctx, destination, midi, velocity) => {
   const now = ctx.currentTime

@@ -1,4 +1,4 @@
-import { INVERSION_LABELS, fitsPiano, invert, octaveBase } from './chords'
+import { fitsPiano, INVERSION_LABELS, invert, octaveBase } from './chords'
 
 export interface Voicing {
   inversion: number
@@ -37,7 +37,10 @@ function validVoicings(notes: number[], lockedOctave: number): Voicing[] {
  * voicing for sharing actual notes with the locked chord regardless of inversion.
  */
 function closenessToLocked(notes: number[], lockedNotes: number[]): number {
-  return lockedNotes.reduce((sum, lockedNote) => sum + Math.min(...notes.map((note) => Math.abs(note - lockedNote))), 0)
+  return lockedNotes.reduce(
+    (sum, lockedNote) => sum + Math.min(...notes.map((note) => Math.abs(note - lockedNote))),
+    0,
+  )
 }
 
 /**
@@ -56,7 +59,11 @@ function closenessToLocked(notes: number[], lockedNotes: number[]): number {
  * The search space is tiny (3 octaves × 3 inversions per chord, few chords), so a plain
  * exhaustive search stays readable without needing a heuristic.
  */
-export function optimizeInversions(allNotes: number[][], lockedIndex: number, lockedVoicing: Voicing): OptimizeResult {
+export function optimizeInversions(
+  allNotes: number[][],
+  lockedIndex: number,
+  lockedVoicing: Voicing,
+): OptimizeResult {
   const lockedNotes = voicingNotes(allNotes[lockedIndex]!, lockedVoicing)
   const otherIndices = allNotes.map((_, i) => i).filter((i) => i !== lockedIndex)
   const optionsPerChord = otherIndices.map((i) => validVoicings(allNotes[i]!, lockedVoicing.octave))
@@ -68,10 +75,15 @@ export function optimizeInversions(allNotes: number[][], lockedIndex: number, lo
   // Depth-first search over every combination of choices, one per other chord.
   function search(depth: number, chosen: Voicing[]) {
     if (depth === otherIndices.length) {
-      const otherNotes = chosen.map((voicing, k) => voicingNotes(allNotes[otherIndices[k]!]!, voicing))
+      const otherNotes = chosen.map((voicing, k) =>
+        voicingNotes(allNotes[otherIndices[k]!]!, voicing),
+      )
       const allVoicedNotes = [lockedNotes, ...otherNotes].flat()
       const span = Math.max(...allVoicedNotes) - Math.min(...allVoicedNotes)
-      const closeness = otherNotes.reduce((sum, notes) => sum + closenessToLocked(notes, lockedNotes), 0)
+      const closeness = otherNotes.reduce(
+        (sum, notes) => sum + closenessToLocked(notes, lockedNotes),
+        0,
+      )
       if (span < bestSpan || (span === bestSpan && closeness < bestCloseness)) {
         bestSpan = span
         bestCloseness = closeness

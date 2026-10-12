@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { MAX_CHORDS, PRESETS, parseNumerals } from '../chords'
 import { track } from '../analytics'
+import { MAX_CHORDS, PRESETS, parseNumerals } from '../chords'
 import { useDismiss } from './useDismiss'
 
 defineProps<{
@@ -60,14 +60,29 @@ function submitCustom() {
           <rect class="body" x="8" y="11" width="16" height="11" rx="2" />
         </svg>
       </button>
-      <button type="button" class="current" aria-haspopup="listbox" :aria-expanded="open" @click="open = !open">
+      <button
+        type="button"
+        class="current"
+        aria-haspopup="listbox"
+        :aria-expanded="open"
+        @click="open = !open"
+      >
         {{ current ?? 'Mixed' }} ▾
       </button>
     </div>
     <div v-if="open" class="popup">
       <ul class="presets" role="listbox">
-        <li v-for="numerals in PRESETS" :key="numerals" role="option" :aria-selected="numerals === current">
-          <button type="button" :class="{ selected: numerals === current }" @click="choose(numerals, false)">
+        <li
+          v-for="numerals in PRESETS"
+          :key="numerals"
+          role="option"
+          :aria-selected="numerals === current"
+        >
+          <button
+            type="button"
+            :class="{ selected: numerals === current }"
+            @click="choose(numerals, false)"
+          >
             {{ numerals }}
           </button>
         </li>
@@ -80,7 +95,7 @@ function submitCustom() {
           aria-label="Custom progression in relative numerals"
           :aria-invalid="customInvalid"
           :title="`Up to ${MAX_CHORDS} numerals. Upper case is major, lower case minor; b or # lowers or raises a degree.`"
-        />
+        >
         <button type="submit" :disabled="custom.trim() === '' || customInvalid">Use</button>
       </form>
     </div>
@@ -127,7 +142,7 @@ function submitCustom() {
   transform: scaleX(-1);
 }
 
-.lock[aria-pressed='true'] {
+.lock[aria-pressed="true"] {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 45%, black);
 }
@@ -205,7 +220,7 @@ function submitCustom() {
   border-radius: 0.5rem;
 }
 
-.custom input[aria-invalid='true'] {
+.custom input[aria-invalid="true"] {
   border-color: #d33;
 }
 

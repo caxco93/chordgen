@@ -24,12 +24,27 @@ function choose(option: ChordOption) {
 
 <template>
   <div ref="root" class="chord-select">
-    <button type="button" class="name" aria-haspopup="listbox" :aria-expanded="open" @click="open = !open">
+    <button
+      type="button"
+      class="name"
+      aria-haspopup="listbox"
+      :aria-expanded="open"
+      @click="open = !open"
+    >
       {{ name }}
     </button>
     <ul v-if="open" class="options" role="listbox">
-      <li v-for="option in options" :key="option.root" role="option" :aria-selected="option.root === selected">
-        <button type="button" :class="{ selected: option.root === selected }" @click="choose(option)">
+      <li
+        v-for="option in options"
+        :key="option.root"
+        role="option"
+        :aria-selected="option.root === selected"
+      >
+        <button
+          type="button"
+          :class="{ selected: option.root === selected }"
+          @click="choose(option)"
+        >
           {{ option.name }}
         </button>
       </li>

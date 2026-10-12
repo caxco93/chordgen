@@ -1,4 +1,4 @@
-import { onUnmounted, watch, type Ref } from 'vue'
+import { onUnmounted, type Ref, watch } from 'vue'
 import type { usePressedKeys } from './usePressedKeys'
 
 const NOTE_OFF = 0x80

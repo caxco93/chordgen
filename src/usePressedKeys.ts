@@ -1,5 +1,5 @@
-import { ref, type Ref } from 'vue'
-import { noteOff, noteOn, type Instrument } from './audio'
+import { type Ref, ref } from 'vue'
+import { type Instrument, noteOff, noteOn } from './audio'
 
 /**
  * Holds notes down on the selected instrument, whether from MIDI or the on-screen keyboard.

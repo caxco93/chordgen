@@ -147,7 +147,11 @@ export function chordOptions(steps: Step[], index: number): ChordOption[] {
 }
 
 /** Picks a random key from the given groups for the progression, never the one in `previous`. */
-export function rerollProgression(previous: number, groupIds: string[], steps: Step[]): Progression {
+export function rerollProgression(
+  previous: number,
+  groupIds: string[],
+  steps: Step[],
+): Progression {
   const roots = KEY_GROUPS.filter((g) => groupIds.includes(g.id)).flatMap((g) => g.roots)
   const candidates = roots.filter((r) => r !== previous)
   return buildProgression(candidates[Math.floor(Math.random() * candidates.length)]!, steps)

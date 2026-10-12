@@ -1,35 +1,35 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { track } from './analytics'
+import { INSTRUMENTS } from './audio'
+import {
+  buildProgression,
+  chordOptions,
+  DEFAULT_KEY_GROUPS,
+  DEFAULT_STEPS,
+  fitsPiano,
+  INVERSION_LABELS,
+  invert,
+  KEY_GROUPS,
+  keyboardStart,
+  noteName,
+  octaveBase,
+  PIANO_HIGH,
+  PIANO_LOW,
+  type Progression,
+  parseNumerals,
+  rerollProgression,
+  type Step,
+} from './chords'
 import ArrowStepper from './components/ArrowStepper.vue'
 import ChordSelect from './components/ChordSelect.vue'
 import MultiSelect from './components/MultiSelect.vue'
 import PianoKeyboard from './components/PianoKeyboard.vue'
 import ProgressionControl from './components/ProgressionControl.vue'
-import { INSTRUMENTS } from './audio'
-import { useMidiInput } from './useMidiInput'
-import { usePressedKeys } from './usePressedKeys'
-import { usePlayback } from './usePlayback'
-import {
-  DEFAULT_KEY_GROUPS,
-  DEFAULT_STEPS,
-  INVERSION_LABELS,
-  KEY_GROUPS,
-  PIANO_HIGH,
-  PIANO_LOW,
-  buildProgression,
-  chordOptions,
-  fitsPiano,
-  invert,
-  keyboardStart,
-  noteName,
-  octaveBase,
-  parseNumerals,
-  type Progression,
-  type Step,
-  rerollProgression,
-} from './chords'
 import { optimizeInversions } from './optimizeInversions'
-import { track } from './analytics'
+import { useMidiInput } from './useMidiInput'
+import { usePlayback } from './usePlayback'
+import { usePressedKeys } from './usePressedKeys'
 
 /** A list with `value` for each chord of the current progression. */
 function perChord(value: number): number[] {
@@ -68,7 +68,10 @@ function fits(index: number, octave: number, inversion: number): boolean {
 }
 
 /** The inversion and octave one step up or down from the current voicing, or undefined past the piano's ends. */
-function inversionTarget(index: number, step: number): { inversion: number; octave: number } | undefined {
+function inversionTarget(
+  index: number,
+  step: number,
+): { inversion: number; octave: number } | undefined {
   const count = INVERSION_LABELS.length
   const next = inversions.value[index]! + step
   const inversion = (next + count) % count
@@ -227,7 +230,8 @@ function selectProgression(text: string, custom: boolean) {
 
 function selectChord(index: number, root: number) {
   if (locked.value) {
-    if (chordRoots.value.some((r) => r !== root)) setProgression(buildProgression(root, steps.value))
+    if (chordRoots.value.some((r) => r !== root))
+      setProgression(buildProgression(root, steps.value))
     return
   }
   if (root === chordRoots.value[index]) return
@@ -262,7 +266,11 @@ function selectChord(index: number, root: number) {
       </svg>
     </a>
     <header class="toolbar">
-      <ProgressionControl v-model:locked="locked" :current="isMixed ? null : numerals" @select="selectProgression" />
+      <ProgressionControl
+        v-model:locked="locked"
+        :current="isMixed ? null : numerals"
+        @select="selectProgression"
+      />
       <ArrowStepper
         what="octave"
         label="Octave"
@@ -312,7 +320,9 @@ function selectChord(index: number, root: number) {
               @step="shiftOctave(i, $event)"
             />
           </div>
-          <button type="button" class="optimize" @click="optimizeInversionsFrom(i)">Closest Inversions</button>
+          <button type="button" class="optimize" @click="optimizeInversionsFrom(i)">
+            Closest Inversions
+          </button>
         </div>
       </li>
     </ul>
@@ -321,25 +331,27 @@ function selectChord(index: number, root: number) {
       <MultiSelect v-model="keyGroups" label="Keys for I" :options="KEY_GROUPS" />
       <button type="button" @click="togglePlayback">{{ isPlaying ? 'Stop' : 'Play' }}</button>
       <label>
-        <input v-model="loop" type="checkbox" />
+        <input v-model="loop" type="checkbox">
         Loop
       </label>
       <label>
-        <input v-model="sound" type="checkbox" />
+        <input v-model="sound" type="checkbox">
         Sound
       </label>
       <label>
-        <input v-model.number="bpm" type="number" class="bpm" :min="MIN_BPM" :max="MAX_BPM" />
+        <input v-model.number="bpm" type="number" class="bpm" :min="MIN_BPM" :max="MAX_BPM">
         BPM
       </label>
       <label>
         <select v-model="instrument" class="instrument">
-          <option v-for="option in INSTRUMENTS" :key="option.id" :value="option.id">{{ option.label }}</option>
+          <option v-for="option in INSTRUMENTS" :key="option.id" :value="option.id">
+            {{ option.label }}
+          </option>
         </select>
         Instrument
       </label>
       <label>
-        <input v-model="midi" type="checkbox" />
+        <input v-model="midi" type="checkbox">
         MIDI Instrument
       </label>
     </footer>

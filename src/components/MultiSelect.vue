@@ -26,7 +26,9 @@ const summary = computed(() => summarize(selected.value))
 const widestSummary = computed(() => summarize(props.options.map((o) => o.id)))
 
 function toggle(id: string) {
-  selected.value = selected.value.includes(id) ? selected.value.filter((s) => s !== id) : [...selected.value, id]
+  selected.value = selected.value.includes(id)
+    ? selected.value.filter((s) => s !== id)
+    : [...selected.value, id]
 }
 </script>
 
@@ -40,14 +42,19 @@ function toggle(id: string) {
       ▾
     </button>
     <ul v-if="open" class="options" role="listbox" aria-multiselectable="true">
-      <li v-for="option in options" :key="option.id" role="option" :aria-selected="selected.includes(option.id)">
+      <li
+        v-for="option in options"
+        :key="option.id"
+        role="option"
+        :aria-selected="selected.includes(option.id)"
+      >
         <label>
           <input
             type="checkbox"
             :checked="selected.includes(option.id)"
             :disabled="selected.length === 1 && selected.includes(option.id)"
             @change="toggle(option.id)"
-          />
+          >
           {{ option.label }}
         </label>
       </li>
