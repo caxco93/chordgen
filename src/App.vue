@@ -340,9 +340,9 @@ function selectChord(index: number, root: number) {
       </li>
     </ul>
     <footer>
-      <button type="button" @click="reroll">Reroll</button>
+      <button type="button" class="reroll" @click="reroll">Reroll</button>
       <MultiSelect v-model="keyGroups" label="Keys for I" :options="KEY_GROUPS" />
-      <button type="button" @click="togglePlayback">{{ isPlaying ? 'Stop' : 'Play' }}</button>
+      <button type="button" class="play" @click="togglePlayback">{{ isPlaying ? 'Stop' : 'Play' }}</button>
       <label>
         <input v-model="loop" type="checkbox">
         Loop

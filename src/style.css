@@ -6,6 +6,8 @@
   --text: #1c1c1c;
   --muted: #777777;
   --accent: #3b6ef5;
+  --play: #22a447;
+  --reroll: #f5c518;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -19,6 +21,8 @@
     --text: #f0f0f0;
     --muted: #8a8a8a;
     --accent: #6c93ff;
+    --play: #2fbf57;
+    --reroll: #f5c518;
   }
 }
 
@@ -38,6 +42,25 @@ button {
 
 button:hover {
   border-color: var(--muted);
+}
+
+button.play,
+button.reroll {
+  color: #1c1c1c;
+  border-color: transparent;
+}
+
+button.play {
+  background: var(--play);
+}
+
+button.reroll {
+  background: var(--reroll);
+}
+
+button.play:hover,
+button.reroll:hover {
+  filter: brightness(1.08);
 }
 
 label {
